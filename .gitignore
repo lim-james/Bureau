@@ -1,0 +1,11 @@
+# OS / editor junk
+.DS_Store
+Thumbs.db
+*.swp
+*~
+.idea/
+.vscode/
+
+# A bureau's runtime state is committed alongside its project, NOT in this
+# framework repo. This clone is the constitution only.
+.bureau/

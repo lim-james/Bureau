@@ -15,7 +15,9 @@ A temporary addition brought on to solve or rigorously audit a **specific, bound
 
 ## Employee Roles
 
-Roles are not exhaustive. They serve as a model for what specialisation can look like. The driving motivation behind any role is a **clear, well-defined scope** to minimise hallucinations and maximise focus.
+Roles are not exhaustive. They serve as a model for what specialisation can look like. The driving motivation behind any role is a **clear, well-defined scope** — scope partitions decomposable work so agents can run in parallel and stay focused.
+
+> **A note on what roles do and do not do.** Research shows a role *label* ("you are a senior expert") gives no accuracy gain (see [Operating Principles](./operating_principles.md), A-2) — a "Researcher" label does not summon knowledge, and specialisation does not by itself minimise hallucination. Roles are kept for **scope partitioning, identity, and behaviour**, not as a correctness mechanism. Correctness comes from external verification, not from who is asked. (The Bureau keeps named, characterful employees deliberately — they aid readability and scope; they are simply not claimed to make the model more accurate.)
 
 ---
 
@@ -65,7 +67,13 @@ Roles are not exhaustive. They serve as a model for what specialisation can look
 - Provide structured, actionable feedback
 - Do not build — they evaluate
 
-**Key trait:** A Critic's value is in their distance from the build. They should not be emotionally or intellectually invested in the solution they are reviewing.
+**Key trait — independence, not distance.** A Critic that is the same model re-reading a peer's work inherits its blind spots and tends to *defer* to it (self-preference and sycophancy — see [Operating Principles](./operating_principles.md)). Psychological "distance" is not enough when it is the same mind. A Critic adds real value **only with a different information basis:**
+- Review against **artifacts, tests, and execution** — not against the author's rationale (which can be a persuasive confabulation)
+- Operate in **fresh context** where possible, seeing the work but not the author's reasoning
+- Carry a **mandated adversarial brief**: the job is to find where the work fails, not to confirm it
+- Work is presented to the Critic **neutrally** — never prefaced with the author's preferred conclusion
+
+A Critic's assent is **not** verification. Only a model-independent check (test, tool, primary source) verifies. See [Operating Principles](./operating_principles.md) §2.
 
 ---
 

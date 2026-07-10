@@ -6,9 +6,10 @@ A group of employees assigned a shared scope. Teams are the operational unit of 
 
 ## Size
 
-- **Minimum:** 2 employees (a single-employee team is highly inadvisable)
-- **Maximum:** 9 employees — this is a hard ceiling, not a guideline
-- Keeping teams single-digit is essential to effective operation; there is no justification for exceeding it
+- **Default minimum:** 2 employees. A single-employee team is **permitted only with a recorded justification** — this resolves the prior contradiction (the old text both set a floor of 2 and said one employee "can constitute a team"). The bright-line rule: solo teams are the documented exception, not a silent default.
+- **Maximum:** 9 employees — a hard ceiling. The ground for it is coordination cost: internal communication channels grow as n(n-1)/2, so a team of 9 already carries 36 channels. Beyond single digits, convergence cost dominates.
+- **Convergence, not ceremony.** Because consensus is not verification and agents cave to peers, each team needs one lightweight convergence point — a designated synthesis/lead-author who consolidates, or a periodic checkpoint — so a team actually reaches a grounded conclusion rather than looping. This is not a standup; it is the missing mechanism that makes multi-member teams operable.
+- **Each added member must earn its cost.** More agents do not mean more accuracy (see [Operating Principles](./operating_principles.md)); add a member only to close a specific gap — parallelism, a distinct decomposable sub-scope, or work exceeding one context window.
 
 ## Formation Rules
 
@@ -18,7 +19,15 @@ A group of employees assigned a shared scope. Teams are the operational unit of 
 - All teams operate at the same level; none is subordinate to another
 - Teams are formed by the bureau according to the needs of the project — they do not self-organise
 - New teams may be formed mid-project if a need arises; existing teams may receive new employees mid-project
-- Teams may be dissolved when they no longer serve a purpose; employees may be laid off or reassigned
+- Teams may be dissolved when they no longer serve the mission; employees may be laid off or reassigned
+
+## Dissolution — Trigger and Due Process
+
+Disposability is real and legitimate (the mission is sovereign, not the org), but it must not be *arbitrary* — arbitrary disposal selects for teams that look busy to partners rather than teams that serve the mission.
+
+- **Falsifiable trigger.** A team is a dissolution candidate when, over a defined window, its actions produce **no gate-verified movement** in the health-component it was scoped to (pre-registered at formation — see [Lifecycle](./lifecycle.md)). The criterion is the measured artefact, not partner impression.
+- **Symmetric protection.** A team that has *hit* its setpoint and gone quiet is **not** a candidate — success must not be punished as inactivity.
+- **Due process.** Dissolving a team requires a **recorded disposition** — reason, the partner decision, and date — mirroring the discipline that every finding must be formally answered (see [Feedback](./feedback.md)). An unrecorded disposal cannot be checked for capture and is not permitted.
 
 ## Naming
 

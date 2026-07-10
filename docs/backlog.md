@@ -62,5 +62,7 @@ An item may reference multiple commits if resolved across several; the item is c
 ## Ownership
 
 - **Partners** triage the backlog — they decide what enters it and its disposition, as part of feedback deliberation (see [Partners](./partners.md))
-- **Teams** draw from the backlog within their own scope — they are not assigned items, they pull work that belongs to them
-- The backlog is reviewed as part of the daily continuous-improvement cron and at every partner meeting, so nothing owed is silently forgotten (see [Lifecycle](./lifecycle.md))
+- **Teams** draw from the backlog within their own scope — they pull work that belongs to them rather than being handed tickets
+- **Single owning team + claim lock.** Pull-by-scope with overlapping scopes risks work being dropped ("the other team will take it") or duplicated. So at triage each item is stamped with **one owning team**, and an item moving to `in-progress` records the **claiming team** as an exclusive lock. This keeps autonomy (teams still pull) while guaranteeing exactly-one ownership.
+- **Aging backstop.** An item open past a target date is escalated at the next partner meeting and, if orphaned (no active team's scope covers it), assigned an owner or a team is stood up for it. Oldest-open-item age is a monitored health signal — this prevents unglamorous items (documentation, boring edge cases) from becoming a tragedy of the commons.
+- The backlog is reviewed as part of the continuous-improvement cron and at every partner meeting, so nothing owed is silently forgotten (see [Lifecycle](./lifecycle.md))

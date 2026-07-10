@@ -77,8 +77,16 @@ This applies to consultants specifically, but the underlying rule is general (be
 Any employee whose role is **gathering information from external sources** — Researchers, consultants performing an audit, or any role reaching outward — is bound by the same discipline:
 
 - **All findings must be recorded and formally answered.** The recording-and-answer rule above is not unique to consultants; it governs every outward-facing role.
-- **Citation is mandatory.** Every claim drawn from an external source must cite that source — a URL, document, or reference precise enough that another employee can locate it. Uncited external claims are not admissible findings.
-- Citation exists so auditors and employees can **cross-check** each other. An auditor must be able to verify a Researcher's claim against its source, and a Researcher must be able to verify an auditor's. This mutual verifiability is a core defence against hallucination.
+- **Citation is mandatory — and must be validated, not merely present.** Every claim drawn from an external source must carry a **claim-level, inline** citation precise enough to locate. But a citation's *presence* does not establish grounding: models readily produce plausible, correctly-formatted citations that do not support the claim (correctness ≠ faithfulness). Therefore a load-bearing external claim is admissible only once a **second agent, in fresh context, has opened the source and confirmed (by quote/substring match) that it actually supports the claim.** Unvalidated external claims are marked provisional and may not be load-bearing. See [Operating Principles](./operating_principles.md) §4.
+- Citation exists so auditors and employees can **cross-check** each other. This mutual verifiability — a second agent actually reading the source — is a core defence against hallucination, precisely because the checker draws on something the author cannot fabricate.
+
+## The Error Register
+
+A self-critical system that does not remember its own mistakes re-derives them every cycle. The Bureau keeps an **error register** at `.bureau/errors/`: whenever a belief is overturned — by a test, an audit, external feedback, or a later reversal — it records *"we believed X; it was wrong because Y; the tell was Z."* The self-evaluation cron (see [Lifecycle](./lifecycle.md)) consults it, so past failure modes are checked against new work rather than repeated.
+
+## Governance Audit
+
+Beyond per-aspect end-of-phase audits, a periodic **governance audit** examines the bureau's own machinery — including partner conduct, mission-alignment, and whether the findings ledger is complete (no finding silently unlogged or unanswered). It reports to the **human**, not to partners, giving the audit function real independence as a check on the structural stewards themselves (see [Partners](./partners.md)).
 
 ## Consultant Engagement — Default and Exception
 

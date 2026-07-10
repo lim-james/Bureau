@@ -5,29 +5,68 @@
 # Responsibilities that keep narration JARVIS-like instead of noisy:
 #   1. GATE  — say nothing unless voice is armed for this run (the "jarvis"
 #              keyword sets a per-run flag file; no flag => silent).
-#   2. QUEUE — serialize lines with flock so two beats never talk over each
+#   2. LEVEL — each beat carries a minimum verbosity level; it is spoken only
+#              if the active level is at least that high. This is how "voice
+#              more/less" is enforced by code, not by the orchestrator's whim.
+#   3. QUEUE — serialize lines with flock so two beats never talk over each
 #              other; lines wait their turn.
-#   3. ASYNC — return immediately; the Bureau never blocks to speak.
+#   4. ASYNC — return immediately; the Bureau never blocks to speak.
+#
+# Verbosity levels:
+#   1 = quiet   (default): start, done, blocked — the essentials
+#   2 = normal            : + each phase transition
+#   3 = verbose           : + curated sub-steps (agent N reporting, tests green…)
+# A beat tagged level N is spoken when the ACTIVE level >= N. So quiet hears only
+# level-1 beats; verbose hears everything.
 #
 # Usage:
-#   narrate.sh "Spinning up the founding panel — six specialists."
+#   narrate.sh "Done."                    # untagged => level 1 (always in quiet+)
+#   narrate.sh -l 2 "Contract ready."     # spoken at normal and verbose
+#   narrate.sh -l 3 "Researcher 3 of 6."  # spoken only at verbose
+#
+# Active level resolution (first that is set wins):
+#   1. BUREAU_VOICE_LEVEL env var (explicit override)
+#   2. the per-run flag file's contents (set by the "jarvis <level>" keyword)
+#   3. BUREAU_VOICE_LEVEL in ~/.bureau/voice.env (persistent default)
+#   4. fallback: 1 (quiet)
 #
 # Arming (done by the /bureau flow when the prompt contains "jarvis"):
-#   touch "$BUREAU_VOICE_FLAG"      # arm for this run
-#   rm -f "$BUREAU_VOICE_FLAG"      # disarm (end of run)
+#   echo <level> > "$BUREAU_VOICE_FLAG"   # arm for this run at a level
+#   touch        "$BUREAU_VOICE_FLAG"     # arm using the default level
+#   rm -f        "$BUREAU_VOICE_FLAG"     # disarm (end of run)
 # Manual override for testing:
-#   BUREAU_VOICE=1 narrate.sh "test line"     # force on
-#   BUREAU_VOICE=0 narrate.sh "test line"     # force off
+#   BUREAU_VOICE=1 BUREAU_VOICE_LEVEL=3 narrate.sh -l 3 "test line"
 
 set -uo pipefail
 
 HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 BUREAU_DIR="${BUREAU_DIR:-$HOME/.bureau}"
+ENV_FILE="$BUREAU_DIR/voice.env"
 FLAG="${BUREAU_VOICE_FLAG:-$BUREAU_DIR/voice.armed}"
 LOCK="$BUREAU_DIR/voice.lock"
 LOG="$BUREAU_DIR/voice.log"
 
 mkdir -p "$BUREAU_DIR" 2>/dev/null || true
+
+# Map a level word or number to a number; blank/unknown -> empty.
+level_num() {
+  case "$(printf '%s' "${1:-}" | tr '[:upper:]' '[:lower:]' | tr -d '[:space:]')" in
+    1|quiet)   echo 1 ;;
+    2|normal)  echo 2 ;;
+    3|verbose) echo 3 ;;
+    *)         echo "" ;;
+  esac
+}
+
+# --- parse optional beat level (-l N | --level N); default beat level = 1 ------
+BEAT_LEVEL=1
+if [ "${1:-}" = "-l" ] || [ "${1:-}" = "--level" ]; then
+  BEAT_LEVEL="$(level_num "${2:-}")"; BEAT_LEVEL="${BEAT_LEVEL:-1}"
+  shift 2 2>/dev/null || shift $#
+fi
+
+TEXT="$*"
+[ -z "${TEXT// }" ] && exit 0
 
 # --- GATE ----------------------------------------------------------------------
 # Precedence: explicit BUREAU_VOICE env overrides; else presence of the flag file.
@@ -39,17 +78,33 @@ case "${BUREAU_VOICE:-}" in
 esac
 [ "$armed" = "1" ] || exit 0
 
-TEXT="$*"
-[ -z "${TEXT// }" ] && exit 0
+# --- ACTIVE LEVEL --------------------------------------------------------------
+# Load persistent default from voice.env without clobbering an explicit env var.
+file_default=""
+if [ -f "$ENV_FILE" ]; then
+  file_default="$(level_num "$(grep -E '^BUREAU_VOICE_LEVEL=' "$ENV_FILE" 2>/dev/null | tail -1 | cut -d= -f2-)")"
+fi
+flag_level=""
+[ -f "$FLAG" ] && flag_level="$(level_num "$(cat "$FLAG" 2>/dev/null)")"
+
+ACTIVE="$(level_num "${BUREAU_VOICE_LEVEL:-}")"     # 1. explicit env
+ACTIVE="${ACTIVE:-$flag_level}"                     # 2. per-run flag contents
+ACTIVE="${ACTIVE:-$file_default}"                   # 3. persistent default
+ACTIVE="${ACTIVE:-1}"                               # 4. fallback: quiet
+
+# Suppress beats above the active level.
+[ "$BEAT_LEVEL" -le "$ACTIVE" ] || exit 0
 
 # --- QUEUE + ASYNC -------------------------------------------------------------
 # Fire-and-forget a subshell that grabs the lock, so the caller returns now but
 # lines still play strictly one-at-a-time in arrival order.
+# The player is overridable for testing (BUREAU_VOICE_PLAYER); defaults to speak.sh.
+PLAYER="${BUREAU_VOICE_PLAYER:-$HERE/speak.sh}"
 (
   exec 9>"$LOCK"
   flock 9                       # wait for our turn
-  printf '%s  %s\n' "$(date '+%H:%M:%S' 2>/dev/null)" "$TEXT" >> "$LOG" 2>/dev/null
-  "$HERE/speak.sh" "$TEXT"
+  printf '%s  [L%s] %s\n' "$(date '+%H:%M:%S' 2>/dev/null)" "$BEAT_LEVEL" "$TEXT" >> "$LOG" 2>/dev/null
+  "$PLAYER" "$TEXT"
 ) >/dev/null 2>&1 &
 
 disown 2>/dev/null || true

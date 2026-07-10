@@ -31,11 +31,37 @@ Add the word `jarvis` anywhere in your `/bureau` prompt:
 ```
 
 Narration arms for that run and (via the carried-over flag) through the
-`/bureau-run` build and continuous improvement. It narrates ~5 milestones per
-run — convened, contract ready, building, milestone/release, done/blocked — not
-a step-by-step readout.
+`/bureau-run` build and continuous improvement. Without the keyword, the Bureau
+is silent exactly as before.
 
-Without the keyword, the Bureau is silent exactly as before.
+## Verbosity — how much it says
+
+Three levels. Add the level word right after `jarvis` to set it for one run:
+
+```
+/bureau jarvis quiet    <task>    # ~3 beats: started, done, blocked
+/bureau jarvis normal   <task>    # ~5 beats: + each phase transition
+/bureau jarvis verbose  <task>    # ~10-15 beats: + curated sub-steps
+/bureau jarvis          <task>    # uses your persistent default (below)
+```
+
+Even `verbose` narrates *curated transitions* ("researcher three of six
+reporting", "citations validated", "committing") — never a per-tool-call or
+per-file readout, which would be exhausting in-ear.
+
+**Persistent default** — set the level used when you don't name one, in
+`~/.bureau/voice.env`:
+
+```
+BUREAU_VOICE_LEVEL=normal     # quiet | normal | verbose
+```
+
+Resolution order for the active level: explicit `BUREAU_VOICE_LEVEL` env →
+the level you typed after `jarvis` → the `voice.env` default → quiet.
+
+Each beat is tagged with a minimum level (`narrate.sh -l 1|2|3 "…"`); the
+script speaks it only if the active level is at least that tag. The orchestrator
+always emits every beat — the script decides what you actually hear.
 
 ## Manual control / testing
 

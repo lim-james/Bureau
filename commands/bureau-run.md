@@ -15,13 +15,15 @@ The Bureau runs fully self-directed from this point. It does not stop to ask for
 
 ### Voice narration (opt-in, ambient)
 
-At the start, determine whether voice is armed: it is armed if `~/.bureau/voice.armed` already exists (carried over from `/bureau`) **or** if `$ARGUMENTS` contains the standalone keyword `jarvis` (case-insensitive) — in which case run `touch ~/.bureau/voice.armed` to arm it.
+At the start, determine whether voice is armed: it is armed if `~/.bureau/voice.armed` already exists (carried over from `/bureau`, including its level) **or** if `$ARGUMENTS` contains the standalone keyword `jarvis` (case-insensitive) — in which case arm it, honouring an optional level word (`quiet`/`normal`/`verbose`) after `jarvis`: `echo <level> > ~/.bureau/voice.armed`, or `touch ~/.bureau/voice.armed` for the default.
 
-If armed, emit one short spoken beat at each intent-level milestone below via (non-blocking, never awaited):
+If armed, emit spoken beats at the milestones below, each **tagged with a minimum level** via `-l` (non-blocking, never awaited):
 ```
-{{BUREAU_HOME}}/voice/narrate.sh "<one concise line, under ~15 words>"
+{{BUREAU_HOME}}/voice/narrate.sh -l <1|2|3> "<one concise line, under ~15 words>"
 ```
-Narrate **intent and transitions only** — never individual tool calls, commits, or per-agent chatter (that noise defeats the point). Milestones for this stage: (a) teams formed and the build beginning; (b) a significant integration or milestone reached; (c) MVP complete and `v1.0.0` tagged; (d) each continuous-improvement release; (e) genuinely blocked, with the reason. Calm, declarative, sparse — a few beats, not a play-by-play. The script self-gates and is async, so it is a safe no-op when unarmed.
+The script plays a beat only if the active level is at least its tag, so **always emit every beat** and let the script decide what is heard.
+
+**Levels:** `-l 1` quiet (build-start, MVP tagged, each release, blocked); `-l 2` normal (+ phase transitions, e.g. team X finished its scope); `-l 3` verbose (+ curated sub-steps, e.g. "tests green," "integrating team X's work," "committing"). Never narrate raw tool calls or per-file writes even at verbose — curated transitions only. Calm, declarative.
 
 Because this stage runs autonomously and continuously, **leave the voice armed** for the duration (do not disarm at MVP — continuous improvement should keep narrating its releases). Only disarm (`rm -f ~/.bureau/voice.armed`) if the human asks the Bureau to go quiet.
 

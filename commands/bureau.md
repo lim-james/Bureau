@@ -38,22 +38,33 @@ Run the following workflow now, passing `$ARGUMENTS` as the problem statement:
 
 Before anything else, check `$ARGUMENTS` for the keyword **`jarvis`** (case-insensitive), as a standalone word.
 
-- **If present:** the human wants ambient voice narration for this run. Arm it once with `touch ~/.bureau/voice.armed`, and strip the `jarvis` keyword from the problem statement before using it (it is an instruction to you, not part of the task). Then, at each **intent-level milestone below**, emit one short spoken beat by running (non-blocking):
-  ```
-  {{BUREAU_HOME}}/voice/narrate.sh "<one concise line>"
-  ```
+- **If present:** the human wants ambient voice narration for this run. Check whether an optional **level word** follows `jarvis` — one of `quiet`, `normal`, or `verbose`:
+  - Arm at that level by writing it to the flag: e.g. `echo verbose > ~/.bureau/voice.armed` (or `quiet`/`normal`). If no level word is given, arm with the default: `touch ~/.bureau/voice.armed` (the script then uses the persistent default in `~/.bureau/voice.env`, or quiet).
+  - Strip `jarvis` **and** the level word from the problem statement before using it (they are instructions to you, not part of the task).
+  - Then emit spoken beats at the milestones below, each **tagged with a minimum level** via `-l`:
+    ```
+    {{BUREAU_HOME}}/voice/narrate.sh -l <1|2|3> "<one concise line>"
+    ```
+    The script plays a beat only if the active level is at least its tag, so you should **always emit every beat** — the script decides what is heard. Do not self-censor by level.
 - **If absent:** do nothing voice-related. Stay silent. Never arm the voice on your own.
 
-**Narration discipline (this is what makes it feel like JARVIS, not a screen-reader):**
-- Narrate **intent and transitions**, never individual tool calls, file writes, or per-agent chatter. The human explicitly does not want a step-by-step readout — that noise defeats the Bureau's independence.
-- One line per milestone, ideally under ~15 words, calm and declarative. Think status update from a trusted operator, not a play-by-play.
-- Milestones to narrate: (1) founding team convened + how many specialists on what; (2) direction contract ready for review; (3) — after approval, in `/bureau-run` — teams forming and beginning the build; (4) MVP milestone reached / release tagged; (5) done, or blocked and why. That is roughly it — five or so beats for a whole run.
-- The script self-gates on the armed flag and is fully async, so calling it when unarmed is a safe no-op. Do not `await` or block on it.
-- When the run finishes (contract surfaced for approval, or build complete), disarm with `rm -f ~/.bureau/voice.armed` so narration does not leak into a later un-armed run.
+**Verbosity levels (what each tag means):**
+- **`-l 1` (quiet — the default):** the essentials only — started, done/contract-ready, blocked. ~3 beats for a whole run.
+- **`-l 2` (normal):** the above **plus** each phase transition. ~5 beats.
+- **`-l 3` (verbose):** the above **plus** curated sub-steps — e.g. "researcher three of six reporting," "findings synthesised," "citations validated," "committing now." ~10–15 beats. Still curated meaningful transitions — **never** a per-tool-call or per-file readout, which would be unbearable in-ear.
 
-Example first beat, immediately after arming:
+**Narration discipline (this is what keeps it JARVIS, not a screen-reader):**
+- Always narrate **intent and transitions**, never raw tool calls. Verbose adds *more transitions*, not raw mechanics.
+- One line per beat, ideally under ~15 words, calm and declarative — a status update from a trusted operator.
+- Tag beats so quiet still makes sense on its own: milestone beats get `-l 1` (convened / contract-ready) or `-l 2` (phase transitions); sub-step beats get `-l 3`.
+- The script self-gates on the armed flag and level, and is fully async — calling it is always a safe no-op if unarmed or above level. Do not `await` or block on it.
+- When the run finishes (contract surfaced for approval), disarm with `rm -f ~/.bureau/voice.armed` so narration does not leak into a later un-armed run.
+
+Example beats, after arming:
 ```
-{{BUREAU_HOME}}/voice/narrate.sh "Convening the founding panel now — strategist, researcher, and critic."
+{{BUREAU_HOME}}/voice/narrate.sh -l 1 "Convening the founding panel — three specialists."
+{{BUREAU_HOME}}/voice/narrate.sh -l 3 "Strategist and researcher reporting; critic still working."
+{{BUREAU_HOME}}/voice/narrate.sh -l 1 "Direction contract ready for your review."
 ```
 
 ---

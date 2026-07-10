@@ -67,13 +67,43 @@ cd ~/my-project                            # then, in Claude Code:
 
 `/bureau-sync` diffs your project's constitution against this clone, updates it, then audits the bureau's actual state and brings it into compliance — creating any required scaffolding, backfilling records and the backlog, and convening partners for anything needing judgement.
 
+## Voice narration (optional)
+
+The Bureau can speak ambient, intent-level status updates into your headset while
+it works — armed per-run by adding the word `jarvis` to a `/bureau` prompt, and
+silent otherwise. It is entirely optional: **skip this and the Bureau works
+exactly the same, just without audio.**
+
+**Requirements:** this feature is **WSL-on-Windows only** (it plays audio by
+invoking Windows). It needs `curl`, `python3`, `wslpath`, and Windows
+`powershell.exe` reachable via `/mnt/c`. On native Linux/macOS it is unsupported
+and stays silent — no error, the Bureau just runs without it.
+
+**Setup:**
+```bash
+mkdir -p ~/.bureau
+cp voice/voice.env.example ~/.bureau/voice.env
+chmod 600 ~/.bureau/voice.env         # holds your API key
+# then edit ~/.bureau/voice.env and paste an ElevenLabs API key
+```
+Without a key it falls back to the robotic Windows SAPI voice. On a corporate
+network that intercepts TLS, see the `BUREAU_VOICE_CA` note in the example file.
+
+**Use it:**
+```
+/bureau jarvis <task>            # narrate at your default level
+/bureau jarvis verbose <task>    # more detail (quiet | normal | verbose)
+```
+Full details in [`voice/README.md`](voice/README.md).
+
 ## Repository layout
 
 ```
 docs/            The constitution — one law per file (read by every agent)
 commands/        Slash-command definitions (installed to ~/.claude/commands/)
+voice/           Optional voice narration (WSL-only); see voice/README.md
 install.sh       Installs commands, pointing them at this clone
 bootstrap.md     The two-stage bootstrap process
 ```
 
-A founded bureau keeps its runtime state in `.bureau/` inside the project — records, contracts, feedback, backlog, and releases.
+A founded bureau keeps its runtime state in `.bureau/` inside the project — records, contracts, feedback, backlog, and releases. Voice secrets/config live in `~/.bureau/` (outside any repo) and are never committed.

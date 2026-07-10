@@ -31,6 +31,25 @@ else
 fi
 [ -z "${TEXT// }" ] && exit 0   # nothing to say
 
+# --- preflight -----------------------------------------------------------------
+# This module is WSL-specific: it plays audio by invoking Windows. On a fresh
+# machine, tell the user exactly what's missing instead of hanging or dying
+# silently. (Goes to stderr; the caller narrate.sh discards it, but a direct run
+# or `bash -x` surfaces it.) Missing deps => exit non-zero so the fallback path
+# in the caller is never fooled into thinking we spoke.
+_missing=""
+for _dep in curl python3 wslpath; do
+  command -v "$_dep" >/dev/null 2>&1 || _missing="$_missing $_dep"
+done
+if [ -n "$_missing" ] || [ ! -x '/mnt/c/Windows/System32/WindowsPowerShell/v1.0/powershell.exe' ]; then
+  {
+    echo "bureau voice: cannot run — this feature requires WSL on Windows plus:${_missing:- }"
+    echo "  needs: curl, python3, wslpath, and Windows powershell.exe (via /mnt/c)."
+    echo "  On native Linux/macOS the voice module is not supported; the Bureau works fine without it."
+  } >&2
+  exit 3
+fi
+
 # --- config --------------------------------------------------------------------
 BUREAU_DIR="${BUREAU_DIR:-$HOME/.bureau}"
 ENV_FILE="$BUREAU_DIR/voice.env"

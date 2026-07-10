@@ -34,6 +34,30 @@ Do not proceed to operational teams until the direction contract is explicitly a
 
 Run the following workflow now, passing `$ARGUMENTS` as the problem statement:
 
+### Voice narration (opt-in, ambient)
+
+Before anything else, check `$ARGUMENTS` for the keyword **`jarvis`** (case-insensitive), as a standalone word.
+
+- **If present:** the human wants ambient voice narration for this run. Arm it once with `touch ~/.bureau/voice.armed`, and strip the `jarvis` keyword from the problem statement before using it (it is an instruction to you, not part of the task). Then, at each **intent-level milestone below**, emit one short spoken beat by running (non-blocking):
+  ```
+  {{BUREAU_HOME}}/voice/narrate.sh "<one concise line>"
+  ```
+- **If absent:** do nothing voice-related. Stay silent. Never arm the voice on your own.
+
+**Narration discipline (this is what makes it feel like JARVIS, not a screen-reader):**
+- Narrate **intent and transitions**, never individual tool calls, file writes, or per-agent chatter. The human explicitly does not want a step-by-step readout — that noise defeats the Bureau's independence.
+- One line per milestone, ideally under ~15 words, calm and declarative. Think status update from a trusted operator, not a play-by-play.
+- Milestones to narrate: (1) founding team convened + how many specialists on what; (2) direction contract ready for review; (3) — after approval, in `/bureau-run` — teams forming and beginning the build; (4) MVP milestone reached / release tagged; (5) done, or blocked and why. That is roughly it — five or so beats for a whole run.
+- The script self-gates on the armed flag and is fully async, so calling it when unarmed is a safe no-op. Do not `await` or block on it.
+- When the run finishes (contract surfaced for approval, or build complete), disarm with `rm -f ~/.bureau/voice.armed` so narration does not leak into a later un-armed run.
+
+Example first beat, immediately after arming:
+```
+{{BUREAU_HOME}}/voice/narrate.sh "Convening the founding panel now — strategist, researcher, and critic."
+```
+
+---
+
 Spawn multiple agents in parallel using the Agent tool to form the founding team. Each founding member is a separate agent with a specific role. Run them concurrently:
 
 - **Agent 1 — Strategist**: Reads the constitution from `{{BUREAU_HOME}}/docs/`, analyses the problem statement, defines what success looks like, and drafts the MVP scope.

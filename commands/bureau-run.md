@@ -13,6 +13,20 @@ The Bureau runs fully self-directed from this point. It does not stop to ask for
 
 ---
 
+### Voice narration (opt-in, ambient)
+
+At the start, determine whether voice is armed: it is armed if `~/.bureau/voice.armed` already exists (carried over from `/bureau`) **or** if `$ARGUMENTS` contains the standalone keyword `jarvis` (case-insensitive) — in which case run `touch ~/.bureau/voice.armed` to arm it.
+
+If armed, emit one short spoken beat at each intent-level milestone below via (non-blocking, never awaited):
+```
+{{BUREAU_HOME}}/voice/narrate.sh "<one concise line, under ~15 words>"
+```
+Narrate **intent and transitions only** — never individual tool calls, commits, or per-agent chatter (that noise defeats the point). Milestones for this stage: (a) teams formed and the build beginning; (b) a significant integration or milestone reached; (c) MVP complete and `v1.0.0` tagged; (d) each continuous-improvement release; (e) genuinely blocked, with the reason. Calm, declarative, sparse — a few beats, not a play-by-play. The script self-gates and is async, so it is a safe no-op when unarmed.
+
+Because this stage runs autonomously and continuously, **leave the voice armed** for the duration (do not disarm at MVP — continuous improvement should keep narrating its releases). Only disarm (`rm -f ~/.bureau/voice.armed`) if the human asks the Bureau to go quiet.
+
+---
+
 Execute the following now:
 
 1. Read the Bureau constitution from `.bureau/constitution/` — all files are constitutional law

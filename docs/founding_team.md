@@ -29,6 +29,8 @@ The founding team is not automatically dissolved after the direction contract is
 
 The bureau makes this call. Founding members do not self-determine their own continuation.
 
+**The mission guardian must survive dissolution.** The founding team is the default holder of intent-authority ("escalate to founding" for direction-level matters — see [External Feedback](./feedback.md)). But if the founding team is fully dissolved, that authority must **transfer explicitly** to a surviving mission guardian (a retained seat or the human) — "escalate to founding" may never point at a body that no longer exists (see [Foundation](./foundation.md) §3). The guardian owns not only the mission's durability but the recurring question of its **validity** — *"is this mission still good, safe, and worth pursuing?"* — with the standing to halt and escalate to the human.
+
 ## Behavioural Expectations
 
 - Founding members are **visionaries**, not reviewers. Their role is to drive progression, not to approve or rubber-stamp.
@@ -43,6 +45,8 @@ The founding team's primary output is a direction contract — a shared understa
 - The intent and goals that all teams are bound to serve
 
 The contract defines **intent**, not **implementation**. Teams are bound to the spirit of the contract — the what and the why — but retain full freedom over the how. Individual innovation within teams is permitted and encouraged, as long as it serves the progression of the bureau.
+
+**Falsifiable success criteria are mandatory.** The direction contract and every milestone must state success as **observable conditions written before work begins** — pre-registered pass/fail, not "make it better." Without this an outcome can always be retro-narrated as success (an unfalsifiable claim). The contract sits *below* the constitution and the mission in the [supremacy order](./foundation.md) — it binds intent within them and proposes, never enacts, constitutional change.
 
 ### Conflict Resolution
 

@@ -26,7 +26,7 @@ param(
   [Parameter(Mandatory=$true)][string]$Flag,
   [Parameter(Mandatory=$true)][string]$Vis,
   [int]$DoneMs = 12000,
-  [int]$Slot = 0,
+  [Parameter(Mandatory=$true)][string]$SlotFile,
   [string]$Title = "BUREAU"
 )
 
@@ -57,7 +57,9 @@ $FADE = @(0.40, 0.68, 1.00)
         WindowStyle="None" AllowsTransparency="True" Background="Transparent"
         Topmost="True" ShowInTaskbar="False" ResizeMode="NoResize"
         SizeToContent="Height" Width="380" Focusable="False" Opacity="0">
-  <Border CornerRadius="13" Padding="13,9,13,10"
+  <!-- Margin gives the drop shadow transparent room so its blur isn't hard-
+       clipped at the window's rectangular edge (the faint light corner artifact). -->
+  <Border CornerRadius="12" Padding="12,7,12,8" Margin="12"
           BorderThickness="1">
     <Border.Background>
       <SolidColorBrush Color="#000000" Opacity="0.88"/>
@@ -66,11 +68,11 @@ $FADE = @(0.40, 0.68, 1.00)
       <SolidColorBrush Color="#5A6B8C" Opacity="0.30"/>
     </Border.BorderBrush>
     <Border.Effect>
-      <DropShadowEffect BlurRadius="24" ShadowDepth="0" Opacity="0.55" Color="#000000"/>
+      <DropShadowEffect BlurRadius="16" ShadowDepth="0" Opacity="0.5" Color="#000000"/>
     </Border.Effect>
     <StackPanel>
       <!-- header: status dot + label, and the Bureau title -->
-      <Grid Margin="0,0,0,7">
+      <Grid Margin="0,0,0,4">
         <StackPanel Orientation="Horizontal" HorizontalAlignment="Left">
           <Ellipse x:Name="Dot" Width="10" Height="10" VerticalAlignment="Center"/>
           <TextBlock x:Name="StatusText" Margin="8,0,0,0" VerticalAlignment="Center"
@@ -101,9 +103,17 @@ for ($i = 0; $i -lt $LINES; $i++) { $lineTB[$i].Opacity = $FADE[$i] }
 # --- geometry + entrance/exit animation ---------------------------------------
 # The window slides in from just past the right edge while fading up, and reverses
 # on hide. "Rest" is the settled position; "Off" is nudged right + transparent.
+# Vertical position comes from the current slot; when the slot changes (another
+# window closed and the stack re-packed) the window animates UP/DOWN to its new
+# row, so the stack always stays gap-free.
 $script:restLeft = 0.0
 $script:offLeft  = 0.0
+$script:marginTop = 0.0
 $SLIDE = 46            # px of horizontal travel for the slide
+$ROW_H = 92            # px per stacked row (tight — cards are ~3 short lines)
+$script:slot = 0       # current slot; kept in sync from $SlotFile
+
+function Top-For-Slot($s) { return $script:marginTop + ($s * $ROW_H) }
 
 # Animate Left + Opacity together. $onDone runs when the fade finishes (used to
 # actually close the window after the exit animation).
@@ -124,19 +134,31 @@ function Animate-To($targetLeft, $targetOpacity, $ms, $onDone) {
   $win.BeginAnimation([Windows.Window]::OpacityProperty, $aO)
 }
 
+# Animate the window vertically to the row for slot $s (re-flow).
+function Animate-ToSlot($s) {
+  $dur = [Windows.Duration]::new([TimeSpan]::FromMilliseconds(320))
+  $ease = New-Object Windows.Media.Animation.CubicEase; $ease.EasingMode = 'EaseInOut'
+  $aT = New-Object Windows.Media.Animation.DoubleAnimation($win.Top, (Top-For-Slot $s), $dur)
+  $aT.EasingFunction = $ease
+  $win.BeginAnimation([Windows.Window]::TopProperty, $aT)
+}
+
 function Show-Overlay { Animate-To $script:restLeft 1.0 380 $null }
 function Hide-Overlay($onDone) { Animate-To $script:offLeft 0.0 300 $onDone }
 
 $win.Add_SourceInitialized({
   $wa = [System.Windows.SystemParameters]::WorkArea
-  $script:restLeft = $wa.Right - $win.Width - 24
-  $script:offLeft  = $script:restLeft + $SLIDE
-  # Stack down the right edge: each instance gets a slot; ~118px per row leaves a
-  # gap for the typical 3-line card. Windows past the work area clamp to the top.
-  $rowH = 118
-  $top = $wa.Top + 24 + ($Slot * $rowH)
-  if ($top -gt ($wa.Bottom - 90)) { $top = $wa.Top + 24 }
-  $win.Top  = $top
+  # The 12px transparent Border margin is absorbed past the screen edge (via the
+  # -$MARGIN offsets) so the visible card sits tight to the corner while the drop
+  # shadow still has room to render un-clipped.
+  $MARGIN = 12
+  $script:restLeft  = $wa.Right - $win.Width - 10 + $MARGIN
+  $script:offLeft   = $script:restLeft + $SLIDE
+  $script:marginTop = $wa.Top + 10 - $MARGIN
+  # initial slot from the file (default 0 if unreadable)
+  $s0 = 0; $sv = (Read-Text $SlotFile); if ($null -ne $sv) { [int]::TryParse($sv.Trim(), [ref]$s0) | Out-Null }
+  $script:slot = $s0
+  $win.Top  = (Top-For-Slot $s0)
   # start off-screen-ish + transparent, then animate in
   $win.Left = $script:offLeft
   $win.Opacity = 0
@@ -211,6 +233,15 @@ $timer.Add_Tick({
     } elseif ($want -eq 'shown' -and $script:visState -eq 'hidden') {
       $script:visState = 'shown'; $script:animating = $true
       Show-Overlay; $script:animating = $false
+    }
+  }
+
+  # ---- slot re-flow: if the stack re-packed, glide to the new row ----------
+  if ($script:tick % 6 -eq 0 -and $script:visState -eq 'shown' -and -not $script:closing) {
+    $sv = (Read-Text $SlotFile)
+    if ($null -ne $sv) {
+      $ns = $script:slot; [int]::TryParse($sv.Trim(), [ref]$ns) | Out-Null
+      if ($ns -ne $script:slot) { $script:slot = $ns; Animate-ToSlot $ns }
     }
   }
 

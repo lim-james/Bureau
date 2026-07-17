@@ -82,10 +82,53 @@ _pick_slot() {
   printf '%s' "$slot"
 }
 
+# Remove instance dirs whose window is gone (auto-faded on 'done', self-closed on
+# disarm, or crashed) — i.e. disarmed OR dead pid. These closed themselves without
+# going through cmd_stop, so their dirs linger; reap them so the stack is accurate.
+_reap() {
+  local d id
+  for d in "$OVER_ROOT"/*/; do
+    [ -d "$d" ] || continue
+    id="$(basename "$d")"
+    if [ ! -f "$d/armed" ] || ! overlay_pid_alive "$OVER_ROOT/$id"; then
+      rm -rf "$d" 2>/dev/null || true
+    fi
+  done
+}
+
+# Re-pack live instances to contiguous slots 0,1,2,… preserving their visual
+# order (by current slot). Each instance's HUD polls its slot file and glides to
+# the new row, so closing a middle window makes the ones below slide up to fill
+# the gap. Run under the slots lock.
+_repack() {
+  exec 8>"$SLOTS_LOCK"
+  flock 8
+    local d id line rows
+    rows=""
+    for d in "$OVER_ROOT"/*/; do
+      [ -d "$d" ] || continue
+      id="$(basename "$d")"
+      overlay_pid_alive "$OVER_ROOT/$id" || continue
+      rows="$rows$(cat "$d/slot" 2>/dev/null || echo 0) $id
+"
+    done
+    # sort by current slot (numeric), then assign 0..N in that order
+    local next=0
+    while IFS=' ' read -r _oldslot rid; do
+      [ -z "$rid" ] && continue
+      printf '%s\n' "$next" > "$OVER_ROOT/$rid/slot" 2>/dev/null || true
+      next=$((next+1))
+    done <<EOF
+$(printf '%s' "$rows" | sort -n)
+EOF
+  flock -u 8
+}
+
 cmd_start() {
   preflight || return 1
   local title="${1:-$OVERLAY_ID}"
 
+  _reap                                      # clear any self-closed instances first
   mkdir -p "$INST" 2>/dev/null || true
 
   if overlay_is_running; then
@@ -107,9 +150,10 @@ cmd_start() {
   printf '%s\n' "$title" > "$TITLEF"
 
   local done_ms="${BUREAU_OVERLAY_DONE_MS:-12000}"
-  local wFeed wStatus wFlag wVis wHud
+  local wFeed wStatus wFlag wVis wSlot wHud
   wFeed="$(wslpath -w "$FEED")"; wStatus="$(wslpath -w "$STATUS")"
   wFlag="$(wslpath -w "$FLAG")"; wVis="$(wslpath -w "$VIS")"
+  wSlot="$(wslpath -w "$SLOTF")"
   wHud="$(wslpath -w "$HUD")"
 
   local slot pid
@@ -119,7 +163,7 @@ cmd_start() {
     printf '%s\n' "$slot" > "$SLOTF"
     "$PS" -NoProfile -ExecutionPolicy Bypass -WindowStyle Hidden \
       -File "$wHud" -Feed "$wFeed" -Status "$wStatus" -Flag "$wFlag" -Vis "$wVis" \
-      -DoneMs "$done_ms" -Slot "$slot" -Title "$title" \
+      -DoneMs "$done_ms" -SlotFile "$wSlot" -Title "$title" \
       >/dev/null 2>&1 &
     pid=$!
     echo "$pid" > "$PIDF"       # written before releasing the lock
@@ -136,6 +180,8 @@ cmd_stop() {
     [ -n "$pid" ] && kill "$pid" 2>/dev/null || true
   fi
   rm -rf "$INST" 2>/dev/null || true         # drop only THIS instance
+  _reap                                      # clear any self-closed instances too
+  _repack                                    # close the gap: survivors slide up
   echo "bureau overlay[$OVERLAY_ID]: stopped"
   return 0
 }
@@ -148,6 +194,7 @@ cmd_hide() { printf 'hidden\n' > "$VIS" 2>/dev/null || true; echo "bureau overla
 cmd_show() { printf 'shown\n'  > "$VIS" 2>/dev/null || true; echo "bureau overlay[$OVERLAY_ID]: showing"; }
 
 cmd_list() {
+  _reap; _repack                             # tidy self-closed windows, close gaps
   local d id pid slot title alive
   local any=0
   for d in "$OVER_ROOT"/*/; do

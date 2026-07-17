@@ -79,6 +79,27 @@ Example beats, after arming:
 {{BUREAU_HOME}}/voice/narrate.sh -l 1 "Direction contract ready for your review."
 ```
 
+### Overlay HUD (opt-in, ambient — the visual sibling of voice)
+
+Also check `$ARGUMENTS` for the keyword **`overlay`** or **`hud`** (case-insensitive, standalone). If present, the human wants the glass teleprompter HUD — a rounded, always-on-top, click-through window that types out a one-line **summary of each response** and shows a status dot. It is a pure view over the run; non-interactive.
+
+- **Arm + launch at the start:** `{{BUREAU_HOME}}/overlay/overlay.sh start` (arms the flag and opens the window; safe no-op off WSL-on-Windows). Strip `overlay`/`hud` from the problem statement.
+- **Push one summary line per response** — a plain-language distillation of what you just did or concluded, not a tool log:
+  ```
+  {{BUREAU_HOME}}/overlay/say.sh "Convened the founding panel; researching prior art now."
+  {{BUREAU_HOME}}/overlay/say.sh -k decision "Direction set: a read-only CLI first — ships in days."
+  ```
+  Kinds set the accent: `summary` (default), `decision` (blue), `status` (dim), `action` (amber).
+- **Drive the status dot** at meaningful moments so it reflects real state:
+  ```
+  {{BUREAU_HOME}}/overlay/status.sh working    # while running (calm blue)
+  {{BUREAU_HOME}}/overlay/status.sh action     # when you need the human (amber, pulsing)
+  {{BUREAU_HOME}}/overlay/status.sh done        # finished (green)
+  {{BUREAU_HOME}}/overlay/status.sh blocked     # stuck on something only the human can resolve (red)
+  ```
+- **When the run finishes** (contract surfaced for approval), set `status.sh action` (you need their review), then stop the HUD only if the human is done: `{{BUREAU_HOME}}/overlay/overlay.sh stop`. Otherwise leave it up. All scripts self-gate on the armed flag and are safe no-ops when the overlay is off.
+- Overlay and voice are independent and combine freely: `jarvis` arms audio, `overlay`/`hud` arms the screen. Emit to both when both are armed.
+
 ---
 
 Spawn multiple agents in parallel using the Agent tool to form the founding team. Each founding member is a separate agent with a specific role. Run them concurrently:

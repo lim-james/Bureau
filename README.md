@@ -102,12 +102,28 @@ network that intercepts TLS, see the `BUREAU_VOICE_CA` note in the example file.
 ```
 Full details in [`voice/README.md`](voice/README.md).
 
+## Overlay HUD (optional)
+
+The visual sibling of the voice: a glass, rounded, always-on-top **teleprompter**
+pinned to a screen corner that types out a one-line summary of each response and
+shows a status dot (working / action-needed / done / blocked). It is a pure,
+non-interactive **view** over a background run — click-through, so it never
+steals your mouse. Same opt-in, WSL-on-Windows-only, silent-by-default design as
+the voice (it renders via Windows WPF; no installs).
+
+```
+/bureau overlay <task>           # show the HUD for this run
+/bureau jarvis overlay <task>    # voice AND screen together (independent, combinable)
+```
+Full details in [`overlay/README.md`](overlay/README.md).
+
 ## Repository layout
 
 ```
 docs/            The constitution — one law per file (read by every agent)
 commands/        Slash-command definitions (installed to ~/.claude/commands/)
 voice/           Optional voice narration (WSL-only); see voice/README.md
+overlay/         Optional glass teleprompter HUD (WSL-only); see overlay/README.md
 install.sh       Installs commands, pointing them at this clone
 bootstrap.md     The two-stage bootstrap process
 ```

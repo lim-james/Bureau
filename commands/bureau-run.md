@@ -33,6 +33,10 @@ The script plays a beat only if it is audible at the active level, so **always e
 
 Because this stage runs autonomously and continuously, **leave the voice armed** for the duration (do not disarm at MVP — continuous improvement should keep narrating its releases). Only disarm (`rm -f ~/.bureau/voice.armed`) if the human asks the Bureau to go quiet.
 
+### Overlay HUD (opt-in, the visual sibling of voice)
+
+The overlay is armed if `~/.bureau/overlay.armed` already exists (carried over from `/bureau`) **or** if `$ARGUMENTS` contains the standalone keyword `overlay`/`hud` — in which case launch it: `{{BUREAU_HOME}}/overlay/overlay.sh start`. If armed, push **one summary line per response** with `{{BUREAU_HOME}}/overlay/say.sh "<one-line distillation>"` (use `-k decision` for conclusions), and drive the status dot with `{{BUREAU_HOME}}/overlay/status.sh working|action|done|blocked` at meaningful moments (e.g. `action` when you need the human, `blocked` when stuck, `working` otherwise). All scripts self-gate and are safe no-ops when off. Like the voice, **leave the overlay running** for the duration of continuous improvement; only `overlay.sh stop` if the human asks. Overlay and voice are independent — emit to both when both are armed.
+
 ---
 
 Execute the following now:

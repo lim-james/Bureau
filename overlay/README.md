@@ -59,6 +59,13 @@ back (e.g. the next continuous-improvement cycle sets `working`), so it never
 vanishes mid-run. Tune or disable via `BUREAU_OVERLAY_DONE_MS` (milliseconds;
 `0` disables auto-fade — the window then stays until `overlay.sh stop`).
 
+**Idle safety net.** The `done` fade only fires if something actually sets
+`done`. If a session ends, crashes, or just goes quiet **without** setting
+`done`, an idle timeout fades the window anyway: if nothing is written to the
+instance (no new feed line, no status change) for `BUREAU_OVERLAY_IDLE_MS`
+(default **5 minutes**), it fades out. Any new activity resets the clock, so a
+still-working run never disappears. Set `BUREAU_OVERLAY_IDLE_MS=0` to disable.
+
 ## Turning it on
 
 Like the voice, it arms per-run via a keyword in your `/bureau` prompt

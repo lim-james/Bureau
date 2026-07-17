@@ -151,7 +151,11 @@ cmd_start() {
   printf 'shown\n' > "$VIS"
   printf '%s\n' "$title" > "$TITLEF"
 
+  # Auto-fade delays (ms; 0 disables). DoneMs: after status hits 'done'. IdleMs:
+  # safety net if nothing is written at all (a session that ended without setting
+  # 'done') — defaults to 5 minutes.
   local done_ms="${BUREAU_OVERLAY_DONE_MS:-12000}"
+  local idle_ms="${BUREAU_OVERLAY_IDLE_MS:-300000}"
   local wFeed wStatus wFlag wVis wSlot wTitle wHud
   wFeed="$(wslpath -w "$FEED")"; wStatus="$(wslpath -w "$STATUS")"
   wFlag="$(wslpath -w "$FLAG")"; wVis="$(wslpath -w "$VIS")"
@@ -165,7 +169,7 @@ cmd_start() {
     printf '%s\n' "$slot" > "$SLOTF"
     "$PS" -NoProfile -ExecutionPolicy Bypass -WindowStyle Hidden \
       -File "$wHud" -Feed "$wFeed" -Status "$wStatus" -Flag "$wFlag" -Vis "$wVis" \
-      -DoneMs "$done_ms" -SlotFile "$wSlot" -TitleFile "$wTitle" \
+      -DoneMs "$done_ms" -IdleMs "$idle_ms" -SlotFile "$wSlot" -TitleFile "$wTitle" \
       >/dev/null 2>&1 &
     pid=$!
     echo "$pid" > "$PIDF"       # written before releasing the lock

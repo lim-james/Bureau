@@ -26,6 +26,7 @@ param(
   [Parameter(Mandatory=$true)][string]$Flag,
   [Parameter(Mandatory=$true)][string]$Vis,
   [int]$DoneMs = 12000,
+  [int]$IdleMs = 300000,
   [Parameter(Mandatory=$true)][string]$SlotFile,
   [Parameter(Mandatory=$true)][string]$TitleFile,
   [string]$Title = "BUREAU"
@@ -261,6 +262,13 @@ $win.Add_SourceInitialized({
   $ex = $U::GetWindowLong($h, $GWL_EXSTYLE)
   [void]$U::SetWindowLong($h, $GWL_EXSTYLE, $ex -bor $WS_EX_TRANSPARENT -bor $WS_EX_LAYERED)
   Measure-Title
+  # Seed the idle clock so the window gets its full grace period from launch.
+  try {
+    $script:lastActivity = '{0}|{1}' -f `
+      ([System.IO.File]::GetLastWriteTimeUtc($Feed).Ticks), `
+      ([System.IO.File]::GetLastWriteTimeUtc($Status).Ticks)
+  } catch { $script:lastActivity = '' }
+  $script:idleTick = 0
   Show-Overlay
 })
 
@@ -273,12 +281,20 @@ $script:closing    = $false  # exit animation in flight
 $script:visState   = 'shown' # shown | hidden — driven by the control file
 $script:animating  = $false  # a show/hide slide is in flight
 $script:doneTick   = -1      # tick at which status first became 'done' (-1 = not done)
+$script:lastActivity = ''    # last-seen "feed mtime|status mtime" signature
+$script:idleTick   = 0       # tick when activity last changed
 
 # Auto-dismiss: once status has been 'done' for this many ms, the HUD fades out
 # and closes on its own. Any status change back (e.g. the next improvement cycle
 # sets 'working') cancels the countdown, so it never vanishes mid-run. Passed in
 # as the -DoneMs param (0 disables auto-fade — the window stays until stopped).
 $DONE_MS = $DoneMs
+
+# Idle safety net: if NOTHING is written to this instance (no new feed line, no
+# status change) for this long, fade out anyway. This is what catches a session
+# that ended, crashed, or went quiet WITHOUT ever setting status=done — otherwise
+# the window would float forever. Reset on any activity. -IdleMs 0 disables it.
+$IDLE_MS = $IdleMs
 
 # Colours per line kind (the "kind" is the text before the first TAB).
 function Kind-Color($kind) {
@@ -392,6 +408,28 @@ $timer.Add_Tick({
   if ($DONE_MS -gt 0 -and $script:doneTick -ge 0 -and -not $script:closing) {
     $elapsedMs = ($script:tick - $script:doneTick) * 40
     if ($elapsedMs -ge $DONE_MS) {
+      $script:closing = $true
+      $timer.Stop()
+      Hide-Overlay({ $win.Close() })
+      return
+    }
+  }
+
+  # ---- idle safety net: fade if nothing has been written for $IDLE_MS -------
+  # Catches sessions that ended/crashed/went quiet without setting status=done,
+  # which would otherwise leave the window floating forever. Activity = a change
+  # in the feed OR status file mtime; any change resets the idle clock.
+  if ($IDLE_MS -gt 0 -and -not $script:closing -and $script:tick % 12 -eq 0) {
+    $sig = ''
+    try {
+      $sig = '{0}|{1}' -f `
+        ([System.IO.File]::GetLastWriteTimeUtc($Feed).Ticks), `
+        ([System.IO.File]::GetLastWriteTimeUtc($Status).Ticks)
+    } catch { $sig = '' }
+    if ($sig -ne $script:lastActivity) {
+      $script:lastActivity = $sig
+      $script:idleTick = $script:tick
+    } elseif ((($script:tick - $script:idleTick) * 40) -ge $IDLE_MS) {
       $script:closing = $true
       $timer.Stop()
       Hide-Overlay({ $win.Close() })

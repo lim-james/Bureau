@@ -177,6 +177,18 @@ $script:lastPubH = -1.0
 $script:instDir  = Split-Path $Feed
 $script:root     = Split-Path $script:instDir
 $script:heightFile = Join-Path $script:instDir 'height'
+$script:beatFile   = Join-Path $script:instDir 'beat'
+
+# Liveness across the WSL/Windows boundary: the pid file holds a WSL pid, which
+# this Windows process CANNOT check with Get-Process. So each HUD writes a
+# heartbeat file every tick; a sibling counts as alive if its heartbeat is fresh.
+# BEAT_STALE_MS must exceed a couple of tick periods (40ms) with margin.
+$BEAT_STALE_MS = 2000
+
+# Touch our heartbeat so siblings know we're alive (see Sibling-Alive).
+function Publish-Beat {
+  try { [System.IO.File]::WriteAllText($script:beatFile, '1') } catch {}
+}
 
 # Publish this window's rendered height so siblings below can position under it.
 function Publish-Height {
@@ -189,23 +201,51 @@ function Publish-Height {
   }
 }
 
-# Desired Top = margin + sum of (height + gap) for every live sibling in a lower
-# slot. Uses each sibling's published height, falling back to an estimate until
-# it appears. Recomputed each tick, so growth/shrink and re-packs both settle.
+# Desired Top = margin + sum of (height + gap) for every LIVE sibling ranked
+# above this window. Crucially this ignores dead/self-closed siblings: when a
+# panel auto-fades (done/idle) or crashes, no overlay.sh command runs to reap or
+# repack it, so its dir lingers with a stale slot. If we trusted those slot
+# numbers a survivor below a vanished middle panel would never slide up. Instead
+# we rank live siblings ourselves by (slot, id) and count only those ahead of us
+# — so the stack re-flows purely from each HUD's own tick, no bash needed.
+function Sibling-Alive($dir) {
+  # Alive = armed AND heartbeat is fresh. The pid file is a WSL pid we can't check
+  # from this Windows process, so we rely on the beat file each HUD keeps touching.
+  # A self-closed/crashed HUD stops beating; within BEAT_STALE_MS it drops out and
+  # the survivors below re-flow up — all without any overlay.sh command running.
+  # Ourselves: always alive (we may not have written a beat on the very first tick).
+  if ((Split-Path $dir -Leaf) -eq (Split-Path $script:instDir -Leaf)) { return $true }
+  if (-not (Test-Path (Join-Path $dir 'armed'))) { return $false }
+  $beat = Join-Path $dir 'beat'
+  if (-not (Test-Path $beat)) { return $true }        # mid-launch: armed, not yet beating
+  try {
+    $age = ([DateTime]::UtcNow - [System.IO.File]::GetLastWriteTimeUtc($beat)).TotalMilliseconds
+    return ($age -le $BEAT_STALE_MS)
+  } catch { return $true }
+}
+
 function Desired-Top {
-  $acc = $script:marginTop
+  $me = Split-Path $script:instDir -Leaf
+  # Gather live siblings as (slot, id, height); rank by slot then id for a stable,
+  # deterministic order that matches how bash repacks.
+  $rows = @()
   try {
     foreach ($d in [System.IO.Directory]::GetDirectories($script:root)) {
+      if (-not (Sibling-Alive $d)) { continue }
       $sf = Join-Path $d 'slot'
-      if (-not (Test-Path $sf)) { continue }
-      $s = -1; $sv = (Read-Text $sf); if ($sv) { [int]::TryParse($sv.Trim(), [ref]$s) | Out-Null }
-      if ($s -ge 0 -and $s -lt $script:slot) {
-        $h = $ROW_EST; $hv = (Read-Text (Join-Path $d 'height'))
-        if ($hv) { [double]::TryParse($hv.Trim(), [System.Globalization.NumberStyles]::Float, [System.Globalization.CultureInfo]::InvariantCulture, [ref]$h) | Out-Null }
-        $acc += $h + $STACK_GAP
-      }
+      $s = 9999; $sv = (Read-Text $sf); if ($sv) { [int]::TryParse($sv.Trim(), [ref]$s) | Out-Null }
+      $h = $ROW_EST; $hv = (Read-Text (Join-Path $d 'height'))
+      if ($hv) { [double]::TryParse($hv.Trim(), [System.Globalization.NumberStyles]::Float, [System.Globalization.CultureInfo]::InvariantCulture, [ref]$h) | Out-Null }
+      $rows += [pscustomobject]@{ id = (Split-Path $d -Leaf); slot = $s; h = $h }
     }
   } catch {}
+  $ranked = $rows | Sort-Object slot, id
+  # Sum heights of everyone ranked before me; stop when I reach myself.
+  $acc = $script:marginTop
+  foreach ($r in $ranked) {
+    if ($r.id -eq $me) { break }
+    $acc += $r.h + $STACK_GAP
+  }
   return $acc
 }
 
@@ -253,6 +293,7 @@ $win.Add_SourceInitialized({
   # initial slot from the file (default 0 if unreadable)
   $s0 = 0; $sv = (Read-Text $SlotFile); if ($null -ne $sv) { [int]::TryParse($sv.Trim(), [ref]$s0) | Out-Null }
   $script:slot = $s0
+  Publish-Beat            # be visible to siblings immediately
   Publish-Height
   $script:targetTop = (Desired-Top)
   $win.Top  = $script:targetTop
@@ -317,6 +358,10 @@ $timer = New-Object System.Windows.Threading.DispatcherTimer
 $timer.Interval = [TimeSpan]::FromMilliseconds(40)
 $timer.Add_Tick({
   $script:tick++
+
+  # Heartbeat so siblings know we're alive (liveness across the WSL/Win boundary).
+  # Stop beating once we're closing, so siblings promptly re-flow into our gap.
+  if (-not $script:closing) { Publish-Beat }
 
   # self-close when disarmed — play the exit animation, then close for real
   if (-not (Test-Path $Flag)) {

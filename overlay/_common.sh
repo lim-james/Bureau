@@ -18,6 +18,9 @@
 #   overlay/<id>/title           the descriptive window title
 #   overlay/<id>/slot            its stack position (0 = top)
 #   overlay/<id>/height          its rendered card height (px), for height-aware stacking
+#   overlay/<id>/beat            heartbeat file the HUD touches each tick; siblings
+#                                use its freshness to detect a self-closed window
+#                                (the pid is a WSL pid the Windows HUD can't check)
 
 BUREAU_DIR="${BUREAU_DIR:-$HOME/.bureau}"
 OVER_ROOT="$BUREAU_DIR/overlay"

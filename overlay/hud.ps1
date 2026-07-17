@@ -108,7 +108,9 @@ try {
 } catch {}
 $win.FindName('TitleText').Text = $titleText.ToUpper()
 $lineTB = @($win.FindName('L0'), $win.FindName('L1'), $win.FindName('L2'))
-for ($i = 0; $i -lt $LINES; $i++) { $lineTB[$i].Opacity = $FADE[$i] }
+# Start every row collapsed (zero height) so a freshly-opened card is not three
+# empty rows tall; each row becomes Visible as a line fills it.
+for ($i = 0; $i -lt $LINES; $i++) { $lineTB[$i].Opacity = $FADE[$i]; $lineTB[$i].Visibility = 'Collapsed' }
 
 # --- geometry + entrance/exit animation ---------------------------------------
 # The window slides in from just past the right edge while fading up, and reverses
@@ -311,6 +313,9 @@ $timer.Add_Tick({
       }
       # Render bottom-aligned: newest at the bottom row (lineTB[LINES-1], bright,
       # typewriter), older rows above it and dimmer. k=0 is the bottom/newest.
+      # Empty rows are COLLAPSED (zero height, not just blank) so the card grows
+      # 1 -> 2 -> 3 lines as content arrives, instead of showing a gap above the
+      # first one or two prompts.
       for ($k = 0; $k -lt $LINES; $k++) {
         $tb  = $lineTB[$LINES - 1 - $k]        # k=0 => bottom row (newest)
         $idx = $take.Count - 1 - $k            # k=0 => newest entry
@@ -318,6 +323,7 @@ $timer.Add_Tick({
           $parts = $take[$idx] -split "`t", 2
           if ($parts.Count -eq 2) { $kind = $parts[0]; $txt = $parts[1] }
           else { $kind = 'summary'; $txt = $parts[0] }
+          $tb.Visibility = 'Visible'
           if ($k -eq 0) {
             # newest line — remember kind/text; the typewriter below reveals it
             if ($txt -ne $script:lastNewest) { $script:lastNewest = $txt; $script:typed = 0; $script:kindLast = $kind }
@@ -327,6 +333,7 @@ $timer.Add_Tick({
           }
         } else {
           $tb.Text = ''
+          $tb.Visibility = 'Collapsed'
         }
       }
     }

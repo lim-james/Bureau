@@ -183,7 +183,9 @@ function Publish-Height {
   $h = $win.ActualHeight
   if ($h -gt 0 -and [Math]::Abs($h - $script:lastPubH) -gt 0.5) {
     $script:lastPubH = $h
-    try { [System.IO.File]::WriteAllText($script:heightFile, [string]$h) } catch {}
+    # Format culture-invariant (always '.' decimal) so a comma-decimal locale
+    # can't write "342,5" that the invariant parse below then misreads.
+    try { [System.IO.File]::WriteAllText($script:heightFile, $h.ToString([System.Globalization.CultureInfo]::InvariantCulture)) } catch {}
   }
 }
 
@@ -198,7 +200,8 @@ function Desired-Top {
       if (-not (Test-Path $sf)) { continue }
       $s = -1; $sv = (Read-Text $sf); if ($sv) { [int]::TryParse($sv.Trim(), [ref]$s) | Out-Null }
       if ($s -ge 0 -and $s -lt $script:slot) {
-        $h = $ROW_EST; $hv = (Read-Text (Join-Path $d 'height')); if ($hv) { [double]::TryParse($hv.Trim(), [ref]$h) | Out-Null }
+        $h = $ROW_EST; $hv = (Read-Text (Join-Path $d 'height'))
+        if ($hv) { [double]::TryParse($hv.Trim(), [System.Globalization.NumberStyles]::Float, [System.Globalization.CultureInfo]::InvariantCulture, [ref]$h) | Out-Null }
         $acc += $h + $STACK_GAP
       }
     }
@@ -235,7 +238,7 @@ function Animate-ToTop($target) {
   $win.BeginAnimation([Windows.Window]::TopProperty, $aT)
 }
 
-function Show-Overlay { Animate-To $script:restLeft 1.0 380 $null }
+function Show-Overlay($onDone) { Animate-To $script:restLeft 1.0 380 $onDone }
 function Hide-Overlay($onDone) { Animate-To $script:offLeft 0.0 300 $onDone }
 
 $win.Add_SourceInitialized({
@@ -262,6 +265,7 @@ $win.Add_SourceInitialized({
   $ex = $U::GetWindowLong($h, $GWL_EXSTYLE)
   [void]$U::SetWindowLong($h, $GWL_EXSTYLE, $ex -bor $WS_EX_TRANSPARENT -bor $WS_EX_LAYERED)
   Measure-Title
+  # (Show-Overlay below; $null completion is fine — Animate-To guards on it.)
   # Seed the idle clock so the window gets its full grace period from launch.
   try {
     $script:lastActivity = '{0}|{1}' -f `
@@ -333,7 +337,7 @@ $timer.Add_Tick({
       Hide-Overlay({ $script:animating = $false })
     } elseif ($want -eq 'shown' -and $script:visState -eq 'hidden') {
       $script:visState = 'shown'; $script:animating = $true
-      Show-Overlay; $script:animating = $false
+      Show-Overlay({ $script:animating = $false })
     }
   }
 
@@ -349,11 +353,22 @@ $timer.Add_Tick({
     if ([Math]::Abs($want - $script:targetTop) -gt 1.0) { Animate-ToTop $want }
   }
 
+  # ---- title re-poll: a session can be renamed at runtime (overlay.sh start on
+  #      a live instance rewrites the title file). Re-read on a slow tick and
+  #      re-measure the marquee if it changed, so the header stays current.
+  if ($script:tick % 25 -eq 0 -and -not $script:closing) {
+    $tf = (Read-Text $TitleFile)
+    if ($tf) {
+      $newTitle = $tf.Trim().ToUpper()
+      if ($newTitle -ne $titleTB.Text) { $titleTB.Text = $newTitle; Measure-Title }
+    }
+  }
+
   # ---- poll the feed + status every ~280ms --------------------------------
   if ($script:tick % 7 -eq 0) {
     $raw = Read-Text $Feed
     if ($null -ne $raw) {
-      $all = @($raw -split "`n" | Where-Object { $_.Trim() -ne '' })
+      $all = @($raw -split "`r?`n" | ForEach-Object { $_.Trim() } | Where-Object { $_ -ne '' })
       $take = @()
       if ($all.Count -gt 0) {
         $start = [Math]::Max(0, $all.Count - $LINES)

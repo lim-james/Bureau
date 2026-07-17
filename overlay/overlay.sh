@@ -84,34 +84,36 @@ _pick_slot() {
   printf '%s' "$slot"
 }
 
-# Remove instance dirs whose window is gone (auto-faded on 'done', self-closed on
-# disarm, or crashed) — i.e. disarmed OR dead pid. These closed themselves without
-# going through cmd_stop, so their dirs linger; reap them so the stack is accurate.
+# Remove instance dirs whose window is genuinely gone (auto-faded on 'done',
+# self-closed on disarm, or crashed). Uses overlay_present so a CONCURRENT
+# session that is mid-launch (armed but pid not yet written) is NOT wiped — that
+# race previously let one session's start/stop/list rm -rf another's files.
+# Runs under the slots lock, in step with _pick_slot / _repack.
 _reap() {
-  local d id
-  for d in "$OVER_ROOT"/*/; do
-    [ -d "$d" ] || continue
-    id="$(basename "$d")"
-    if [ ! -f "$d/armed" ] || ! overlay_pid_alive "$OVER_ROOT/$id"; then
-      rm -rf "$d" 2>/dev/null || true
-    fi
-  done
+  exec 8>"$SLOTS_LOCK"
+  flock 8
+    local d
+    for d in "$OVER_ROOT"/*/; do
+      [ -d "$d" ] || continue
+      overlay_present "$d" || rm -rf "$d" 2>/dev/null || true
+    done
+  flock -u 8
 }
 
-# Re-pack live instances to contiguous slots 0,1,2,… preserving their visual
+# Re-pack present instances to contiguous slots 0,1,2,… preserving their visual
 # order (by current slot). Each instance's HUD polls its slot file and glides to
 # the new row, so closing a middle window makes the ones below slide up to fill
-# the gap. Run under the slots lock.
+# the gap. Includes mid-launch instances (overlay_present) so a concurrent start
+# isn't dropped and left duplicating a slot. Run under the slots lock.
 _repack() {
   exec 8>"$SLOTS_LOCK"
   flock 8
-    local d id line rows
+    local d rows
     rows=""
     for d in "$OVER_ROOT"/*/; do
       [ -d "$d" ] || continue
-      id="$(basename "$d")"
-      overlay_pid_alive "$OVER_ROOT/$id" || continue
-      rows="$rows$(cat "$d/slot" 2>/dev/null || echo 0) $id
+      overlay_present "$d" || continue
+      rows="$rows$(cat "$d/slot" 2>/dev/null || echo 0) $(basename "$d")
 "
     done
     # sort by current slot (numeric), then assign 0..N in that order

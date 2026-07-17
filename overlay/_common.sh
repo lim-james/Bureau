@@ -54,5 +54,18 @@ overlay_pid_alive() {
   [ -n "$pid" ] && kill -0 "$pid" 2>/dev/null
 }
 
+# Should a given instance dir be considered "present" (holds a slot, must not be
+# reaped)? True if it is armed AND (its launcher is alive OR it is still
+# mid-launch — armed written but pid not yet). This mirrors _taken_slots so that
+# reap/repack/slot-assignment all agree, and a concurrent session's start is
+# never wiped during its launch window. A dir that is disarmed, or armed with a
+# dead pid, is genuinely gone and may be reaped.
+overlay_present() {
+  local dir="$1"
+  [ -f "$dir/armed" ] || return 1
+  overlay_pid_alive "$dir" && return 0
+  [ ! -f "$dir/pid" ]                 # mid-launch: armed but pid not written yet
+}
+
 # This instance's own running check.
 overlay_is_running() { overlay_pid_alive "$INST"; }

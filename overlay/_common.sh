@@ -17,6 +17,7 @@
 #   overlay/<id>/pid             its launched powershell.exe pid
 #   overlay/<id>/title           the descriptive window title
 #   overlay/<id>/slot            its stack position (0 = top)
+#   overlay/<id>/height          its rendered card height (px), for height-aware stacking
 
 BUREAU_DIR="${BUREAU_DIR:-$HOME/.bureau}"
 OVER_ROOT="$BUREAU_DIR/overlay"

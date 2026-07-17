@@ -150,10 +150,10 @@ cmd_start() {
   printf '%s\n' "$title" > "$TITLEF"
 
   local done_ms="${BUREAU_OVERLAY_DONE_MS:-12000}"
-  local wFeed wStatus wFlag wVis wSlot wHud
+  local wFeed wStatus wFlag wVis wSlot wTitle wHud
   wFeed="$(wslpath -w "$FEED")"; wStatus="$(wslpath -w "$STATUS")"
   wFlag="$(wslpath -w "$FLAG")"; wVis="$(wslpath -w "$VIS")"
-  wSlot="$(wslpath -w "$SLOTF")"
+  wSlot="$(wslpath -w "$SLOTF")"; wTitle="$(wslpath -w "$TITLEF")"
   wHud="$(wslpath -w "$HUD")"
 
   local slot pid
@@ -163,7 +163,7 @@ cmd_start() {
     printf '%s\n' "$slot" > "$SLOTF"
     "$PS" -NoProfile -ExecutionPolicy Bypass -WindowStyle Hidden \
       -File "$wHud" -Feed "$wFeed" -Status "$wStatus" -Flag "$wFlag" -Vis "$wVis" \
-      -DoneMs "$done_ms" -SlotFile "$wSlot" -Title "$title" \
+      -DoneMs "$done_ms" -SlotFile "$wSlot" -TitleFile "$wTitle" \
       >/dev/null 2>&1 &
     pid=$!
     echo "$pid" > "$PIDF"       # written before releasing the lock

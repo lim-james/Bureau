@@ -27,6 +27,7 @@ param(
   [Parameter(Mandatory=$true)][string]$Vis,
   [int]$DoneMs = 12000,
   [Parameter(Mandatory=$true)][string]$SlotFile,
+  [Parameter(Mandatory=$true)][string]$TitleFile,
   [string]$Title = "BUREAU"
 )
 
@@ -95,8 +96,17 @@ $win = [Windows.Markup.XamlReader]::Load($reader)
 
 $dot    = $win.FindName('Dot')
 $stext  = $win.FindName('StatusText')
-# Uppercase the title for a calm HUD-label look; trimming handles overflow.
-$win.FindName('TitleText').Text = $Title.ToUpper()
+# Title comes from a file (avoids fragile command-line quoting for titles with
+# quotes/spaces); fall back to the -Title param if the file isn't readable.
+# Uppercased for a calm HUD-label look; trimming handles overflow.
+$titleText = $Title
+try {
+  if (Test-Path $TitleFile) {
+    $tf = (Get-Content -Raw -LiteralPath $TitleFile -ErrorAction SilentlyContinue)
+    if ($tf) { $titleText = $tf.Trim() }
+  }
+} catch {}
+$win.FindName('TitleText').Text = $titleText.ToUpper()
 $lineTB = @($win.FindName('L0'), $win.FindName('L1'), $win.FindName('L2'))
 for ($i = 0; $i -lt $LINES; $i++) { $lineTB[$i].Opacity = $FADE[$i] }
 
@@ -110,10 +120,47 @@ $script:restLeft = 0.0
 $script:offLeft  = 0.0
 $script:marginTop = 0.0
 $SLIDE = 46            # px of horizontal travel for the slide
-$ROW_H = 92            # px per stacked row (tight — cards are ~3 short lines)
+$ROW_EST = 74         # fallback per-row height until a sibling publishes its real one
+$STACK_GAP = -14      # overlap the transparent card margins so the visible gap is tight
 $script:slot = 0       # current slot; kept in sync from $SlotFile
+$script:targetTop = 0.0
+$script:lastPubH = -1.0
 
-function Top-For-Slot($s) { return $script:marginTop + ($s * $ROW_H) }
+# Each instance lives in its own dir; the overlay root is two levels up from the
+# feed file. Siblings publish a "height" file we read to stack by ACTUAL height,
+# so a card that grows (wrapped line) pushes the ones below it down instead of
+# overlapping them.
+$script:instDir  = Split-Path $Feed
+$script:root     = Split-Path $script:instDir
+$script:heightFile = Join-Path $script:instDir 'height'
+
+# Publish this window's rendered height so siblings below can position under it.
+function Publish-Height {
+  $h = $win.ActualHeight
+  if ($h -gt 0 -and [Math]::Abs($h - $script:lastPubH) -gt 0.5) {
+    $script:lastPubH = $h
+    try { [System.IO.File]::WriteAllText($script:heightFile, [string]$h) } catch {}
+  }
+}
+
+# Desired Top = margin + sum of (height + gap) for every live sibling in a lower
+# slot. Uses each sibling's published height, falling back to an estimate until
+# it appears. Recomputed each tick, so growth/shrink and re-packs both settle.
+function Desired-Top {
+  $acc = $script:marginTop
+  try {
+    foreach ($d in [System.IO.Directory]::GetDirectories($script:root)) {
+      $sf = Join-Path $d 'slot'
+      if (-not (Test-Path $sf)) { continue }
+      $s = -1; $sv = (Read-Text $sf); if ($sv) { [int]::TryParse($sv.Trim(), [ref]$s) | Out-Null }
+      if ($s -ge 0 -and $s -lt $script:slot) {
+        $h = $ROW_EST; $hv = (Read-Text (Join-Path $d 'height')); if ($hv) { [double]::TryParse($hv.Trim(), [ref]$h) | Out-Null }
+        $acc += $h + $STACK_GAP
+      }
+    }
+  } catch {}
+  return $acc
+}
 
 # Animate Left + Opacity together. $onDone runs when the fade finishes (used to
 # actually close the window after the exit animation).
@@ -134,11 +181,12 @@ function Animate-To($targetLeft, $targetOpacity, $ms, $onDone) {
   $win.BeginAnimation([Windows.Window]::OpacityProperty, $aO)
 }
 
-# Animate the window vertically to the row for slot $s (re-flow).
-function Animate-ToSlot($s) {
-  $dur = [Windows.Duration]::new([TimeSpan]::FromMilliseconds(320))
+# Animate the window vertically to a target Top (re-flow / height changes).
+function Animate-ToTop($target) {
+  $script:targetTop = $target
+  $dur = [Windows.Duration]::new([TimeSpan]::FromMilliseconds(300))
   $ease = New-Object Windows.Media.Animation.CubicEase; $ease.EasingMode = 'EaseInOut'
-  $aT = New-Object Windows.Media.Animation.DoubleAnimation($win.Top, (Top-For-Slot $s), $dur)
+  $aT = New-Object Windows.Media.Animation.DoubleAnimation($win.Top, $target, $dur)
   $aT.EasingFunction = $ease
   $win.BeginAnimation([Windows.Window]::TopProperty, $aT)
 }
@@ -158,7 +206,9 @@ $win.Add_SourceInitialized({
   # initial slot from the file (default 0 if unreadable)
   $s0 = 0; $sv = (Read-Text $SlotFile); if ($null -ne $sv) { [int]::TryParse($sv.Trim(), [ref]$s0) | Out-Null }
   $script:slot = $s0
-  $win.Top  = (Top-For-Slot $s0)
+  Publish-Height
+  $script:targetTop = (Desired-Top)
+  $win.Top  = $script:targetTop
   # start off-screen-ish + transparent, then animate in
   $win.Left = $script:offLeft
   $win.Opacity = 0
@@ -199,10 +249,11 @@ function Kind-Color($kind) {
 function Read-Text($path) {
   try {
     $fs = [System.IO.File]::Open($path, 'Open', 'Read', 'ReadWrite')
+    $sr = $null
     try {
       $sr = New-Object System.IO.StreamReader($fs)
       return $sr.ReadToEnd()
-    } finally { $fs.Dispose() }
+    } finally { if ($sr) { $sr.Dispose() } else { $fs.Dispose() } }
   } catch { return $null }
 }
 
@@ -236,13 +287,16 @@ $timer.Add_Tick({
     }
   }
 
-  # ---- slot re-flow: if the stack re-packed, glide to the new row ----------
+  # ---- height-aware stacking: keep my slot current, publish my height, and
+  #      sit exactly below the (variable-height) windows in lower slots. This is
+  #      what prevents overlap when a card grows (a wrapped line) or the stack
+  #      re-packs after a close.
   if ($script:tick % 6 -eq 0 -and $script:visState -eq 'shown' -and -not $script:closing) {
     $sv = (Read-Text $SlotFile)
-    if ($null -ne $sv) {
-      $ns = $script:slot; [int]::TryParse($sv.Trim(), [ref]$ns) | Out-Null
-      if ($ns -ne $script:slot) { $script:slot = $ns; Animate-ToSlot $ns }
-    }
+    if ($null -ne $sv) { $ns = $script:slot; [int]::TryParse($sv.Trim(), [ref]$ns) | Out-Null; $script:slot = $ns }
+    Publish-Height
+    $want = (Desired-Top)
+    if ([Math]::Abs($want - $script:targetTop) -gt 1.0) { Animate-ToTop $want }
   }
 
   # ---- poll the feed + status every ~280ms --------------------------------
@@ -255,24 +309,24 @@ $timer.Add_Tick({
         $start = [Math]::Max(0, $all.Count - $LINES)
         $take = $all[$start..($all.Count - 1)]
       }
-      # render lines bottom-aligned: newest -> L4
-      for ($i = 0; $i -lt $LINES; $i++) {
-        $slot = $LINES - 1 - $i               # 0 => L4 (newest)
-        $idx  = $take.Count - 1 - $i
+      # Render bottom-aligned: newest at the bottom row (lineTB[LINES-1], bright,
+      # typewriter), older rows above it and dimmer. k=0 is the bottom/newest.
+      for ($k = 0; $k -lt $LINES; $k++) {
+        $tb  = $lineTB[$LINES - 1 - $k]        # k=0 => bottom row (newest)
+        $idx = $take.Count - 1 - $k            # k=0 => newest entry
         if ($idx -ge 0) {
           $parts = $take[$idx] -split "`t", 2
           if ($parts.Count -eq 2) { $kind = $parts[0]; $txt = $parts[1] }
           else { $kind = 'summary'; $txt = $parts[0] }
-          $tb = $lineTB[$LINES - 1 - $slot]
-          if ($slot -eq 0) {
-            # newest line — remember kind/text; typewriter handled below
+          if ($k -eq 0) {
+            # newest line — remember kind/text; the typewriter below reveals it
             if ($txt -ne $script:lastNewest) { $script:lastNewest = $txt; $script:typed = 0; $script:kindLast = $kind }
           } else {
             $tb.Text = $txt
             $tb.Foreground = [Windows.Media.BrushConverter]::new().ConvertFromString((Kind-Color $kind))
           }
         } else {
-          $lineTB[$LINES - 1 - $slot].Text = ''
+          $tb.Text = ''
         }
       }
     }

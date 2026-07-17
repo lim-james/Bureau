@@ -36,6 +36,20 @@ Add-Type -AssemblyName PresentationFramework
 Add-Type -AssemblyName PresentationCore
 Add-Type -AssemblyName WindowsBase
 
+# Read a file as UTF-8, tolerating concurrent writers. Defined FIRST because the
+# script runs top-to-bottom and the title read below calls it. Windows PS 5.1's
+# default reader uses the ANSI codepage, which mangles UTF-8 special characters.
+function Read-Text($path) {
+  try {
+    $fs = [System.IO.File]::Open($path, 'Open', 'Read', 'ReadWrite')
+    $sr = $null
+    try {
+      $sr = New-Object System.IO.StreamReader($fs, [System.Text.Encoding]::UTF8)
+      return $sr.ReadToEnd()
+    } finally { if ($sr) { $sr.Dispose() } else { $fs.Dispose() } }
+  } catch { return $null }
+}
+
 # --- click-through / layered window interop ------------------------------------
 $sig = @'
 [DllImport("user32.dll")] public static extern int GetWindowLong(IntPtr hwnd, int index);
@@ -79,9 +93,17 @@ $FADE = @(0.40, 0.68, 1.00)
           <TextBlock x:Name="StatusText" Margin="8,0,0,0" VerticalAlignment="Center"
                      FontFamily="Segoe UI Semibold" FontSize="11" Foreground="#AEB9CF"/>
         </StackPanel>
-        <TextBlock x:Name="TitleText" HorizontalAlignment="Right" VerticalAlignment="Center"
-                   MaxWidth="250" TextTrimming="CharacterEllipsis" TextWrapping="NoWrap"
-                   FontFamily="Segoe UI Semibold" FontSize="11" Foreground="#7C8BA8"/>
+        <!-- Title: a fixed-width clipped viewport. If the text fits it sits
+             static (right-aligned); if it overflows it marquee-scrolls. -->
+        <Canvas x:Name="TitleClip" Width="250" Height="16" HorizontalAlignment="Right"
+                VerticalAlignment="Center" ClipToBounds="True">
+          <TextBlock x:Name="TitleText" Canvas.Top="0" TextWrapping="NoWrap"
+                     FontFamily="Segoe UI Semibold" FontSize="11" Foreground="#7C8BA8">
+            <TextBlock.RenderTransform>
+              <TranslateTransform x:Name="TitleShift" X="0"/>
+            </TextBlock.RenderTransform>
+          </TextBlock>
+        </Canvas>
       </Grid>
       <TextBlock x:Name="L0" TextWrapping="Wrap" FontFamily="Segoe UI" FontSize="12" Foreground="#E6ECF7" Margin="0,0,0,0"/>
       <TextBlock x:Name="L1" TextWrapping="Wrap" FontFamily="Segoe UI" FontSize="12" Foreground="#E6ECF7" Margin="0,0,0,0"/>
@@ -97,16 +119,35 @@ $win = [Windows.Markup.XamlReader]::Load($reader)
 $dot    = $win.FindName('Dot')
 $stext  = $win.FindName('StatusText')
 # Title comes from a file (avoids fragile command-line quoting for titles with
-# quotes/spaces); fall back to the -Title param if the file isn't readable.
-# Uppercased for a calm HUD-label look; trimming handles overflow.
+# quotes/spaces); fall back to the -Title param if the file isn't readable. Read
+# via Read-Text so it's decoded UTF-8 (special chars render correctly).
 $titleText = $Title
-try {
-  if (Test-Path $TitleFile) {
-    $tf = (Get-Content -Raw -LiteralPath $TitleFile -ErrorAction SilentlyContinue)
-    if ($tf) { $titleText = $tf.Trim() }
+$tf = (Read-Text $TitleFile)
+if ($tf) { $titleText = $tf.Trim() }
+$titleTB   = $win.FindName('TitleText')
+$titleClip = $win.FindName('TitleClip')
+$titleShift = $win.FindName('TitleShift')
+$titleTB.Text = $titleText.ToUpper()
+
+# Marquee state: when the title is wider than its viewport, scroll it left-and-
+# back with pauses at each end; otherwise sit static, right-aligned in the clip.
+$script:mqW = 0.0            # measured text width (px)
+$script:mqViewW = 250.0     # viewport width (matches Canvas Width above)
+$script:mqX = 0.0           # current shift
+$script:mqDir = -1          # -1 scrolling left, +1 scrolling right
+$script:mqPause = 0         # ticks to hold at an end
+function Measure-Title {
+  $titleTB.Measure([Windows.Size]::new([double]::PositiveInfinity, [double]::PositiveInfinity))
+  $script:mqW = $titleTB.DesiredSize.Width
+  if ($script:mqW -le $script:mqViewW) {
+    # fits — pin to the right edge, no scroll
+    $script:mqX = $script:mqViewW - $script:mqW
+    $titleShift.X = $script:mqX
+  } else {
+    $script:mqX = 0.0; $script:mqDir = -1; $script:mqPause = 40
+    $titleShift.X = 0.0
   }
-} catch {}
-$win.FindName('TitleText').Text = $titleText.ToUpper()
+}
 $lineTB = @($win.FindName('L0'), $win.FindName('L1'), $win.FindName('L2'))
 # Start every row collapsed (zero height) so a freshly-opened card is not three
 # empty rows tall; each row becomes Visible as a line fills it.
@@ -219,6 +260,7 @@ $win.Add_SourceInitialized({
   $GWL_EXSTYLE = -20; $WS_EX_TRANSPARENT = 0x20; $WS_EX_LAYERED = 0x80000
   $ex = $U::GetWindowLong($h, $GWL_EXSTYLE)
   [void]$U::SetWindowLong($h, $GWL_EXSTYLE, $ex -bor $WS_EX_TRANSPARENT -bor $WS_EX_LAYERED)
+  Measure-Title
   Show-Overlay
 })
 
@@ -248,16 +290,6 @@ function Kind-Color($kind) {
   }
 }
 
-function Read-Text($path) {
-  try {
-    $fs = [System.IO.File]::Open($path, 'Open', 'Read', 'ReadWrite')
-    $sr = $null
-    try {
-      $sr = New-Object System.IO.StreamReader($fs)
-      return $sr.ReadToEnd()
-    } finally { if ($sr) { $sr.Dispose() } else { $fs.Dispose() } }
-  } catch { return $null }
-}
 
 # --- one shared timer: fast tick drives typewriter + pulse; every Nth tick polls
 $tick = 0
@@ -384,6 +416,19 @@ $timer.Add_Tick({
     $dot.Opacity = 0.45 + 0.55 * (0.5 * (1 + [Math]::Sin($script:pulse)))
   } else {
     $dot.Opacity = 1.0
+  }
+
+  # ---- title marquee: scroll only when the text overflows its viewport ------
+  if ($script:mqW -gt $script:mqViewW) {
+    if ($script:mqPause -gt 0) {
+      $script:mqPause--
+    } else {
+      $minX = $script:mqViewW - $script:mqW   # fully-left extent (negative)
+      $script:mqX += $script:mqDir * 0.8      # px/tick (~20px/s at 40ms)
+      if ($script:mqX -le $minX) { $script:mqX = $minX; $script:mqDir = 1; $script:mqPause = 40 }
+      elseif ($script:mqX -ge 0) { $script:mqX = 0.0; $script:mqDir = -1; $script:mqPause = 40 }
+      $titleShift.X = $script:mqX
+    }
   }
 })
 

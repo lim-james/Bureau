@@ -16,13 +16,26 @@
 #   1 = quiet   (default): start, done, blocked — the essentials
 #   2 = normal            : + each phase transition
 #   3 = verbose           : + curated sub-steps (agent N reporting, tests green…)
-# A beat tagged level N is spoken when the ACTIVE level >= N. So quiet hears only
-# level-1 beats; verbose hears everything.
+#   4 = briefing          : the "be the voice of the model" mode — you hear the
+#                           essentials (1), phase transitions (2) and, crucially,
+#                           full DECISION beats (4): the actual decision, its
+#                           reason, and what it means — spoken so you can listen
+#                           instead of reading. Briefing deliberately does NOT
+#                           play the verbose mechanical sub-steps (3), which are
+#                           noise to someone working alongside.
+#
+# Levels 1..3 are a monotonic ladder: a beat tagged N is spoken when ACTIVE >= N,
+# so verbose hears everything below it. Level 4 (briefing) is a distinct MODE, not
+# a louder verbose: it hears {1,2,4} but skips 3. Decision beats (tag 4) are heard
+# ONLY in briefing — the other modes speak status ("a decision was made"), briefing
+# speaks substance ("the decision is X, because Y").
 #
 # Usage:
 #   narrate.sh "Done."                    # untagged => level 1 (always in quiet+)
-#   narrate.sh -l 2 "Contract ready."     # spoken at normal and verbose
+#   narrate.sh -l 2 "Contract ready."     # spoken at normal, verbose
 #   narrate.sh -l 3 "Researcher 3 of 6."  # spoken only at verbose
+#   narrate.sh -l 4 "We chose X over Y…"  # a DECISION — spoken only in briefing
+#                                         # (or use decide.sh, which tags -l 4 for you)
 #
 # Active level resolution (first that is set wins):
 #   1. BUREAU_VOICE_LEVEL env var (explicit override)
@@ -51,11 +64,28 @@ mkdir -p "$BUREAU_DIR" 2>/dev/null || true
 # Map a level word or number to a number; blank/unknown -> empty.
 level_num() {
   case "$(printf '%s' "${1:-}" | tr '[:upper:]' '[:lower:]' | tr -d '[:space:]')" in
-    1|quiet)   echo 1 ;;
-    2|normal)  echo 2 ;;
-    3|verbose) echo 3 ;;
-    *)         echo "" ;;
+    1|quiet)    echo 1 ;;
+    2|normal)   echo 2 ;;
+    3|verbose)  echo 3 ;;
+    4|briefing) echo 4 ;;
+    *)          echo "" ;;
   esac
+}
+
+# Decide whether a beat tagged BEAT is audible at the ACTIVE level.
+# Levels 1..3 are the classic ladder (audible when ACTIVE >= BEAT). Briefing (4)
+# is a distinct mode, not a louder verbose: it hears essentials (1), phase
+# transitions (2) and DECISION beats (4), but deliberately drops verbose
+# mechanical sub-steps (3). Decision beats (4) are audible ONLY in briefing.
+beat_audible() {
+  local active="$1" beat="$2"
+  if [ "$active" = "4" ]; then
+    [ "$beat" != "3" ]              # briefing: everything except verbose mechanics
+  elif [ "$beat" = "4" ]; then
+    return 1                        # decision beats are briefing-only
+  else
+    [ "$beat" -le "$active" ]       # classic monotonic ladder
+  fi
 }
 
 # --- parse optional beat level (-l N | --level N); default beat level = 1 ------
@@ -92,8 +122,8 @@ ACTIVE="${ACTIVE:-$flag_level}"                     # 2. per-run flag contents
 ACTIVE="${ACTIVE:-$file_default}"                   # 3. persistent default
 ACTIVE="${ACTIVE:-1}"                               # 4. fallback: quiet
 
-# Suppress beats above the active level.
-[ "$BEAT_LEVEL" -le "$ACTIVE" ] || exit 0
+# Suppress beats not audible at the active level (see beat_audible above).
+beat_audible "$ACTIVE" "$BEAT_LEVEL" || exit 0
 
 # --- QUEUE + ASYNC -------------------------------------------------------------
 # Fire-and-forget a subshell that grabs the lock, so the caller returns now but

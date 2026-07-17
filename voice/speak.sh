@@ -14,7 +14,7 @@
 #
 # Config (all optional except the key): ~/.bureau/voice.env
 #   ELEVENLABS_API_KEY=...        (required for the good voice)
-#   BUREAU_VOICE_ID=...           (default: Lily)
+#   BUREAU_VOICE_ID=...           (default: Jessica)
 #   BUREAU_VOICE_MODEL=...        (default: eleven_turbo_v2_5 — low latency)
 #   BUREAU_VOICE_CA=...           (default: ~/.bureau/corp-chain.pem if present)
 #
@@ -55,7 +55,7 @@ BUREAU_DIR="${BUREAU_DIR:-$HOME/.bureau}"
 ENV_FILE="$BUREAU_DIR/voice.env"
 [ -f "$ENV_FILE" ] && { set -a; . "$ENV_FILE"; set +a; }
 
-VOICE_ID="${BUREAU_VOICE_ID:-pFZP5JQG7iQjIQuC4Bku}"        # Lily
+VOICE_ID="${BUREAU_VOICE_ID:-cgSgspJ2msm6clMCkdW9}"        # Jessica (playful, bright, warm)
 MODEL="${BUREAU_VOICE_MODEL:-eleven_turbo_v2_5}"
 CA="${BUREAU_VOICE_CA:-$BUREAU_DIR/corp-chain.pem}"
 PS='/mnt/c/Windows/System32/WindowsPowerShell/v1.0/powershell.exe'

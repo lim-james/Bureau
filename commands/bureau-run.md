@@ -15,15 +15,21 @@ The Bureau runs fully self-directed from this point. It does not stop to ask for
 
 ### Voice narration (opt-in, ambient)
 
-At the start, determine whether voice is armed: it is armed if `~/.bureau/voice.armed` already exists (carried over from `/bureau`, including its level) **or** if `$ARGUMENTS` contains the standalone keyword `jarvis` (case-insensitive) — in which case arm it, honouring an optional level word (`quiet`/`normal`/`verbose`) after `jarvis`: `echo <level> > ~/.bureau/voice.armed`, or `touch ~/.bureau/voice.armed` for the default.
+At the start, determine whether voice is armed: it is armed if `~/.bureau/voice.armed` already exists (carried over from `/bureau`, including its level) **or** if `$ARGUMENTS` contains the standalone keyword `jarvis` (case-insensitive) — in which case arm it, honouring an optional level word (`quiet`/`normal`/`verbose`/`briefing`) after `jarvis`: `echo <level> > ~/.bureau/voice.armed`, or `touch ~/.bureau/voice.armed` for the default.
 
-If armed, emit spoken beats at the milestones below, each **tagged with a minimum level** via `-l` (non-blocking, never awaited):
+If armed, emit spoken beats at the milestones below, each **tagged with a minimum level** via `-l`, and speak every **decision** through `decide.sh` (non-blocking, never awaited):
 ```
-{{BUREAU_HOME}}/voice/narrate.sh -l <1|2|3> "<one concise line, under ~15 words>"
+{{BUREAU_HOME}}/voice/narrate.sh -l <1|2|3> "<one concise status line, under ~15 words>"
+{{BUREAU_HOME}}/voice/decide.sh "<the decision, its reason, and what it means>"
 ```
-The script plays a beat only if the active level is at least its tag, so **always emit every beat** and let the script decide what is heard.
+The script plays a beat only if it is audible at the active level, so **always emit every beat** and let the script decide what is heard.
 
 **Levels:** `-l 1` quiet (build-start, MVP tagged, each release, blocked); `-l 2` normal (+ phase transitions, e.g. team X finished its scope); `-l 3` verbose (+ curated sub-steps, e.g. "tests green," "integrating team X's work," "committing"). Never narrate raw tool calls or per-file writes even at verbose — curated transitions only. Calm, declarative.
+
+**Briefing — the "be the voice of the model" mode:** hears essentials + phase transitions + **the decisions themselves, spoken in full**, but skips the verbose mechanical sub-steps. Whenever the Bureau reaches a conclusion the human would otherwise have to read — an architecture call, a resolved trade-off, what shipped in a release and why, a chosen approach over its alternatives — speak it through `decide.sh` in 1–3 short sentences: the decision, the *because*, the *so-what*. `decide.sh` tags it `-l 4` and is **heard only in briefing** (a silent no-op otherwise), so always route decisions through it. Status still goes through `narrate.sh`. Example:
+```
+{{BUREAU_HOME}}/voice/decide.sh "Shipping v1.2 now: switched storage to SQLite because the JSON files were corrupting under concurrent writes — durability over simplicity."
+```
 
 Because this stage runs autonomously and continuously, **leave the voice armed** for the duration (do not disarm at MVP — continuous improvement should keep narrating its releases). Only disarm (`rm -f ~/.bureau/voice.armed`) if the human asks the Bureau to go quiet.
 

@@ -38,32 +38,44 @@ Run the following workflow now, passing `$ARGUMENTS` as the problem statement:
 
 Before anything else, check `$ARGUMENTS` for the keyword **`jarvis`** (case-insensitive), as a standalone word.
 
-- **If present:** the human wants ambient voice narration for this run. Check whether an optional **level word** follows `jarvis` — one of `quiet`, `normal`, or `verbose`:
-  - Arm at that level by writing it to the flag: e.g. `echo verbose > ~/.bureau/voice.armed` (or `quiet`/`normal`). If no level word is given, arm with the default: `touch ~/.bureau/voice.armed` (the script then uses the persistent default in `~/.bureau/voice.env`, or quiet).
+- **If present:** the human wants ambient voice narration for this run. Check whether an optional **level word** follows `jarvis` — one of `quiet`, `normal`, `verbose`, or `briefing`:
+  - Arm at that level by writing it to the flag: e.g. `echo briefing > ~/.bureau/voice.armed` (or `quiet`/`normal`/`verbose`). If no level word is given, arm with the default: `touch ~/.bureau/voice.armed` (the script then uses the persistent default in `~/.bureau/voice.env`, or quiet).
   - Strip `jarvis` **and** the level word from the problem statement before using it (they are instructions to you, not part of the task).
   - Then emit spoken beats at the milestones below, each **tagged with a minimum level** via `-l`:
     ```
     {{BUREAU_HOME}}/voice/narrate.sh -l <1|2|3> "<one concise line>"
+    {{BUREAU_HOME}}/voice/decide.sh "<the decision, its reason, and what it means>"
     ```
-    The script plays a beat only if the active level is at least its tag, so you should **always emit every beat** — the script decides what is heard. Do not self-censor by level.
+    The script plays a beat only if it is audible at the active level, so you should **always emit every beat** — the script decides what is heard. Do not self-censor by level.
 - **If absent:** do nothing voice-related. Stay silent. Never arm the voice on your own.
 
 **Verbosity levels (what each tag means):**
 - **`-l 1` (quiet — the default):** the essentials only — started, done/contract-ready, blocked. ~3 beats for a whole run.
 - **`-l 2` (normal):** the above **plus** each phase transition. ~5 beats.
 - **`-l 3` (verbose):** the above **plus** curated sub-steps — e.g. "researcher three of six reporting," "findings synthesised," "citations validated," "committing now." ~10–15 beats. Still curated meaningful transitions — **never** a per-tool-call or per-file readout, which would be unbearable in-ear.
+- **`briefing` (the "be the voice of the model" mode):** essentials + phase transitions + **the decisions themselves, spoken in full** via `decide.sh`. This is the mode for listening *instead of* reading. It deliberately **omits** the verbose mechanical sub-steps (`-l 3`) — those are noise to someone working alongside. Where the other modes say *"a direction has been decided,"* briefing says *"the direction is X, because Y, which means Z."*
+
+**Decision beats — the heart of briefing mode:**
+- Whenever the Bureau **reaches a conclusion or makes a final decision** the human would otherwise have to read (the direction, a scope call, a resolved trade-off, a chosen approach over its alternatives), speak it in full with `decide.sh`:
+  ```
+  {{BUREAU_HOME}}/voice/decide.sh "The MVP is a read-only CLI, not a daemon — faster to ship and it covers the stated need; a watcher can come later."
+  ```
+- `decide.sh` tags the line as a decision (`-l 4`) and is **heard only in briefing mode** — a silent no-op in quiet/normal/verbose. So always emit decisions through it; it self-gates.
+- Articulate the **substance**: the decision, the *because*, and the *so-what* — 1–3 short spoken sentences. Do not merely announce that a decision exists; state it so the listener never needs to read it.
+- Status still goes through `narrate.sh` (it's not a decision). Use `decide.sh` only for actual conclusions/decisions.
 
 **Narration discipline (this is what keeps it JARVIS, not a screen-reader):**
 - Always narrate **intent and transitions**, never raw tool calls. Verbose adds *more transitions*, not raw mechanics.
-- One line per beat, ideally under ~15 words, calm and declarative — a status update from a trusted operator.
-- Tag beats so quiet still makes sense on its own: milestone beats get `-l 1` (convened / contract-ready) or `-l 2` (phase transitions); sub-step beats get `-l 3`.
-- The script self-gates on the armed flag and level, and is fully async — calling it is always a safe no-op if unarmed or above level. Do not `await` or block on it.
+- One line per status beat, ideally under ~15 words, calm and declarative — a status update from a trusted operator. Decision beats may run slightly longer (1–3 sentences) because they carry the full articulation.
+- Tag beats so quiet still makes sense on its own: milestone beats get `-l 1` (convened / contract-ready) or `-l 2` (phase transitions); sub-step beats get `-l 3`; decisions go through `decide.sh`.
+- The script self-gates on the armed flag and level, and is fully async — calling it is always a safe no-op if unarmed or not audible. Do not `await` or block on it.
 - When the run finishes (contract surfaced for approval), disarm with `rm -f ~/.bureau/voice.armed` so narration does not leak into a later un-armed run.
 
 Example beats, after arming:
 ```
 {{BUREAU_HOME}}/voice/narrate.sh -l 1 "Convening the founding panel — three specialists."
 {{BUREAU_HOME}}/voice/narrate.sh -l 3 "Strategist and researcher reporting; critic still working."
+{{BUREAU_HOME}}/voice/decide.sh "Direction set: a read-only CLI first, because it covers the need and ships in days — the file-watcher becomes a fast-follow."
 {{BUREAU_HOME}}/voice/narrate.sh -l 1 "Direction contract ready for your review."
 ```
 

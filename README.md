@@ -74,6 +74,11 @@ it works — armed per-run by adding the word `jarvis` to a `/bureau` prompt, an
 silent otherwise. It is entirely optional: **skip this and the Bureau works
 exactly the same, just without audio.**
 
+There is also a **briefing** mode (`jarvis briefing`) where the Bureau becomes
+the *voice of the model*: instead of telling you a decision was made and leaving
+you to go read it, it speaks the decision itself — the conclusion, the reason,
+and what it means — so you can listen while working on something else.
+
 **Requirements:** this feature is **WSL-on-Windows only** (it plays audio by
 invoking Windows). It needs `curl`, `python3`, `wslpath`, and Windows
 `powershell.exe` reachable via `/mnt/c`. On native Linux/macOS it is unsupported
@@ -93,6 +98,7 @@ network that intercepts TLS, see the `BUREAU_VOICE_CA` note in the example file.
 ```
 /bureau jarvis <task>            # narrate at your default level
 /bureau jarvis verbose <task>    # more detail (quiet | normal | verbose)
+/bureau jarvis briefing <task>   # speak the decisions themselves, in full
 ```
 Full details in [`voice/README.md`](voice/README.md).
 

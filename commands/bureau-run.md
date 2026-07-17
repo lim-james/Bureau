@@ -15,7 +15,7 @@ The Bureau runs fully self-directed from this point. It does not stop to ask for
 
 ### Voice narration (opt-in, ambient)
 
-At the start, determine whether voice is armed: it is armed if `~/.bureau/voice.armed` already exists (carried over from `/bureau`, including its level) **or** if `$ARGUMENTS` contains the standalone keyword `jarvis` (case-insensitive) — in which case arm it, honouring an optional level word (`quiet`/`normal`/`verbose`/`briefing`) after `jarvis`: `echo <level> > ~/.bureau/voice.armed`, or `touch ~/.bureau/voice.armed` for the default.
+At the start, determine whether voice is armed: it is armed if `~/.bureau/voice.armed` already exists (carried over from `/bureau`, including its level) **or** if `$ARGUMENTS` contains the standalone keyword `jarvis` (case-insensitive) — in which case arm it, honouring an optional level word (`quiet`/`normal`/`verbose`/`briefing`) after `jarvis`: `mkdir -p ~/.bureau && echo <level> > ~/.bureau/voice.armed`, or `mkdir -p ~/.bureau && touch ~/.bureau/voice.armed` for the default (the `mkdir` makes this work on a fresh clone where `~/.bureau` does not yet exist).
 
 If armed, emit spoken beats at the milestones below, each **tagged with a minimum level** via `-l`, and speak every **decision** through `decide.sh` (non-blocking, never awaited):
 ```

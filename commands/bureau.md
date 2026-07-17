@@ -39,7 +39,7 @@ Run the following workflow now, passing `$ARGUMENTS` as the problem statement:
 Before anything else, check `$ARGUMENTS` for the keyword **`jarvis`** (case-insensitive), as a standalone word.
 
 - **If present:** the human wants ambient voice narration for this run. Check whether an optional **level word** follows `jarvis` — one of `quiet`, `normal`, `verbose`, or `briefing`:
-  - Arm at that level by writing it to the flag: e.g. `echo briefing > ~/.bureau/voice.armed` (or `quiet`/`normal`/`verbose`). If no level word is given, arm with the default: `touch ~/.bureau/voice.armed` (the script then uses the persistent default in `~/.bureau/voice.env`, or quiet).
+  - Arm at that level by writing it to the flag (create the runtime dir first so this works on a fresh clone): e.g. `mkdir -p ~/.bureau && echo briefing > ~/.bureau/voice.armed` (or `quiet`/`normal`/`verbose`). If no level word is given, arm with the default: `mkdir -p ~/.bureau && touch ~/.bureau/voice.armed` (the script then uses the persistent default in `~/.bureau/voice.env`, or quiet).
   - Strip `jarvis` **and** the level word from the problem statement before using it (they are instructions to you, not part of the task).
   - Then emit spoken beats at the milestones below, each **tagged with a minimum level** via `-l`:
     ```

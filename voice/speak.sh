@@ -32,19 +32,21 @@ fi
 [ -z "${TEXT// }" ] && exit 0   # nothing to say
 
 # --- preflight -----------------------------------------------------------------
-# This module is WSL-specific: it plays audio by invoking Windows. On a fresh
-# machine, tell the user exactly what's missing instead of hanging or dying
-# silently. (Goes to stderr; the caller narrate.sh discards it, but a direct run
-# or `bash -x` surfaces it.) Missing deps => exit non-zero so the fallback path
-# in the caller is never fooled into thinking we spoke.
+# This module is WSL-specific: it plays audio by invoking Windows. The HARD deps
+# for ANY playback are wslpath + Windows powershell.exe — the SAPI fallback needs
+# only those. curl/python3 are needed only for the natural ElevenLabs voice, so
+# they are NOT required here: if they're missing, speak_eleven fails and we fall
+# back to SAPI, which is the correct degradation. Missing hard deps => exit
+# non-zero so the caller is never fooled into thinking we spoke.
 _missing=""
-for _dep in curl python3 wslpath; do
+for _dep in wslpath; do
   command -v "$_dep" >/dev/null 2>&1 || _missing="$_missing $_dep"
 done
 if [ -n "$_missing" ] || [ ! -x '/mnt/c/Windows/System32/WindowsPowerShell/v1.0/powershell.exe' ]; then
   {
     echo "bureau voice: cannot run — this feature requires WSL on Windows plus:${_missing:- }"
-    echo "  needs: curl, python3, wslpath, and Windows powershell.exe (via /mnt/c)."
+    echo "  needs: wslpath and Windows powershell.exe (via /mnt/c). curl + python3"
+    echo "  are needed only for the natural voice; without them it falls back to SAPI."
     echo "  On native Linux/macOS the voice module is not supported; the Bureau works fine without it."
   } >&2
   exit 3
@@ -82,13 +84,16 @@ play_mp3_windows() {
   local wslmp3="$1"
   local winmp3; winmp3="$(win_path "$wslmp3")"
   [ -z "$winmp3" ] && return 1
+  # Escape single quotes for the PowerShell string literal (a temp path with a
+  # quote would otherwise break the command), matching sapi_say's handling.
+  local safe="${winmp3//\'/\'\'}"
   # NaturalDuration isn't ready until the media opens, so poll briefly for it
   # (bounded), then sleep the clip length + a small tail. Hard-capped so a
   # misread duration can never wedge the queue.
   "$PS" -NoProfile -Command "
     Add-Type -AssemblyName presentationCore
     \$p = New-Object System.Windows.Media.MediaPlayer
-    \$p.Open([uri]'$winmp3')
+    \$p.Open([uri]'$safe')
     \$secs = 0.0
     for (\$i = 0; \$i -lt 20; \$i++) {
       Start-Sleep -Milliseconds 50

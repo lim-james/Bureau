@@ -78,7 +78,9 @@ _pick_slot() {
   while [ "$slot" -lt "$SLOT_MAX" ]; do
     case " $taken " in *" $slot "*) slot=$((slot+1));; *) break;; esac
   done
-  [ "$slot" -ge "$SLOT_MAX" ] && slot=0     # wrap; windows may overlap past SLOT_MAX
+  # Past SLOT_MAX (many simultaneous sessions) the screen is full; land on the
+  # last slot rather than slot 0, so we don't overlap the primary (top) window.
+  [ "$slot" -ge "$SLOT_MAX" ] && slot=$((SLOT_MAX - 1))
   printf '%s' "$slot"
 }
 

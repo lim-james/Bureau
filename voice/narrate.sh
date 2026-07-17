@@ -126,8 +126,12 @@ ACTIVE="${ACTIVE:-1}"                               # 4. fallback: quiet
 beat_audible "$ACTIVE" "$BEAT_LEVEL" || exit 0
 
 # --- QUEUE + ASYNC -------------------------------------------------------------
-# Fire-and-forget a subshell that grabs the lock, so the caller returns now but
-# lines still play strictly one-at-a-time in arrival order.
+# Fire-and-forget a subshell that grabs the lock, so the caller returns now while
+# lines play one-at-a-time (the flock serialises playback — never two clips at
+# once). Note: flock provides mutual exclusion, NOT FIFO ordering, so under
+# rapid-fire beats the play order is not strictly guaranteed; in practice beats
+# are spaced far enough apart that they play in order. Mutual exclusion is the
+# property that matters (no overlapping audio).
 # The player is overridable for testing (BUREAU_VOICE_PLAYER); defaults to speak.sh.
 PLAYER="${BUREAU_VOICE_PLAYER:-$HERE/speak.sh}"
 (

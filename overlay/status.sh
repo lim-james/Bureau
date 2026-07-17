@@ -20,11 +20,11 @@
 
 set -uo pipefail
 
-BUREAU_DIR="${BUREAU_DIR:-$HOME/.bureau}"
-FLAG="${BUREAU_OVERLAY_FLAG:-$BUREAU_DIR/overlay.armed}"
-STATUS="${BUREAU_OVERLAY_STATUS:-$BUREAU_DIR/overlay.status}"
+HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+. "$HERE/_common.sh"
+overlay_resolve
 
-mkdir -p "$BUREAU_DIR" 2>/dev/null || true
+mkdir -p "$INST" 2>/dev/null || true
 
 STATE="$(printf '%s' "${1:-working}" | tr '[:upper:]' '[:lower:]' | tr -d '[:space:]')"
 case "$STATE" in working|done|action|blocked) : ;; *) STATE="working" ;; esac

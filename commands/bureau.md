@@ -83,7 +83,16 @@ Example beats, after arming:
 
 Also check `$ARGUMENTS` for the keyword **`overlay`** or **`hud`** (case-insensitive, standalone). If present, the human wants the glass teleprompter HUD — a rounded, always-on-top, click-through window that types out a one-line **summary of each response** and shows a status dot. It is a pure view over the run; non-interactive.
 
-- **Arm + launch at the start:** `{{BUREAU_HOME}}/overlay/overlay.sh start` (arms the flag and opens the window; safe no-op off WSL-on-Windows). Strip `overlay`/`hud` from the problem statement.
+**Multi-session:** several Bureau sessions can run at once, each with its own HUD. To keep them from colliding, **every overlay command must set `BUREAU_OVERLAY_ID`** — a short, stable, kebab-case id you derive from the task (e.g. `export-latency`, `auth-rewrite`). Use the *same id* for every call in this run. Each id gets its own window, its own feed/status, and an auto-assigned stack slot, so windows tile down the right edge without overlapping. Export it once so all calls inherit it:
+```
+export BUREAU_OVERLAY_ID="<short-kebab-id-from-the-task>"
+```
+
+- **Arm + launch at the start** with a **descriptive title** (what this session is about — shown in the window header so the human can tell sessions apart):
+  ```
+  {{BUREAU_HOME}}/overlay/overlay.sh start "Export pipeline — latency work"
+  ```
+  (arms the flag and opens the window; safe no-op off WSL-on-Windows). Strip `overlay`/`hud` from the problem statement.
 - **Push one summary line per response** — a plain-language distillation of what you just did or concluded, not a tool log:
   ```
   {{BUREAU_HOME}}/overlay/say.sh "Convened the founding panel; researching prior art now."

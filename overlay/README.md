@@ -7,8 +7,27 @@ the *visual sibling* of the [voice](../voice/README.md) module — same WSL→Wi
 bridge, same opt-in, silent-by-default philosophy.
 
 It is a **pure view**: non-interactive and click-through (it never steals your
-mouse), reads two files written by the Bureau, and never writes back. Use it to
+mouse), reads files written by the Bureau, and never writes back. Use it to
 keep half an eye on a background run while you work on something else.
+
+## Multi-session
+
+Several Bureau sessions can run at once, each with its own HUD. Every overlay is
+an **instance** keyed by `BUREAU_OVERLAY_ID` (a short, stable id derived from the
+task). Each instance gets its own namespaced files under
+`~/.bureau/overlay/<id>/` and an auto-assigned **stack slot**, so the windows
+tile down the right edge without colliding — no shared feed, no shared pid, no
+overwriting. A window shows a **descriptive title** (set at `start`) so you can
+tell sessions apart. Slots are reclaimed when an instance stops or dies.
+
+```
+export BUREAU_OVERLAY_ID=export-latency
+overlay/overlay.sh start "Export pipeline — latency work"
+overlay/overlay.sh list        # all instances: id, slot, pid, title
+overlay/overlay.sh stop-all    # stop every instance
+```
+If you never set `BUREAU_OVERLAY_ID`, everything falls back to a single instance
+named `default` — fine for one session.
 
 ## How it works
 
@@ -69,13 +88,18 @@ via `/mnt/c`. It needs `wslpath` and `powershell.exe`. On native Linux/macOS the
 overlay is unsupported and simply does nothing (the Bureau runs fine without it).
 No installs — WPF ships with Windows.
 
-## Files (under `~/.bureau/`, outside any repo)
+## Files (under `~/.bureau/overlay/`, outside any repo)
+
+Per-instance, namespaced by `BUREAU_OVERLAY_ID` (`<id>` below):
 
 ```
-overlay.armed    presence = armed; the HUD watches this and self-closes when gone
-overlay.feed     the summary lines (kind<TAB>text), trimmed to the last 40
-overlay.status   one token: working | action | done | blocked
-                 (holding 'done' ~12s auto-fades the window; see On finish above)
-overlay.vis      one token: shown | hidden  (drives the slide in/out)
-overlay.pid      the launched powershell.exe pid (best-effort cleanup)
+overlay/slots.lock       lock for atomic stack-slot assignment across instances
+overlay/<id>/armed       presence = armed; the HUD watches this and self-closes when gone
+overlay/<id>/feed        the summary lines (kind<TAB>text), trimmed to the last 40
+overlay/<id>/status      one token: working | action | done | blocked
+                         (holding 'done' ~12s auto-fades the window; see On finish above)
+overlay/<id>/vis         one token: shown | hidden  (drives the slide in/out)
+overlay/<id>/pid         the launched powershell.exe pid (best-effort cleanup)
+overlay/<id>/title       the descriptive window title
+overlay/<id>/slot        this instance's stack position (0 = top)
 ```

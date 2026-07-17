@@ -22,13 +22,13 @@
 
 set -uo pipefail
 
-BUREAU_DIR="${BUREAU_DIR:-$HOME/.bureau}"
-FLAG="${BUREAU_OVERLAY_FLAG:-$BUREAU_DIR/overlay.armed}"
-FEED="${BUREAU_OVERLAY_FEED:-$BUREAU_DIR/overlay.feed}"
-LOCK="$BUREAU_DIR/overlay.feed.lock"
+HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+. "$HERE/_common.sh"
+overlay_resolve
+LOCK="$FEED_LOCK"
 KEEP=40   # keep the feed bounded; the HUD only shows the last handful
 
-mkdir -p "$BUREAU_DIR" 2>/dev/null || true
+mkdir -p "$INST" 2>/dev/null || true
 
 # --- parse optional -k/--kind KIND --------------------------------------------
 KIND="summary"

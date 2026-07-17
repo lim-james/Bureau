@@ -11,8 +11,14 @@
 #   -Feed    path to overlay.feed   (lines: "kind<TAB>text", newest last)
 #   -Status  path to overlay.status (one token: working|done|action|blocked)
 #   -Flag    path to overlay.armed  (window self-closes when this is gone)
+#   -Vis     path to overlay.vis    (shown|hidden — drives the slide in/out)
+#   -DoneMs  auto-fade delay after status hits 'done' (0 disables)
+#   -Slot    stack position (0 = top); windows tile down the right edge
+#   -Title   descriptive window label (which Bureau session this is)
 #
-# All paths are WINDOWS paths (the caller converts via wslpath -w).
+# All paths are WINDOWS paths (the caller converts via wslpath -w). Multi-session
+# safety lives in the WSL scripts (per-instance files + slot assignment); this
+# window just renders the files and sits at the slot it was given.
 
 param(
   [Parameter(Mandatory=$true)][string]$Feed,
@@ -20,6 +26,7 @@ param(
   [Parameter(Mandatory=$true)][string]$Flag,
   [Parameter(Mandatory=$true)][string]$Vis,
   [int]$DoneMs = 12000,
+  [int]$Slot = 0,
   [string]$Title = "BUREAU"
 )
 
@@ -70,7 +77,8 @@ $FADE = @(0.40, 0.68, 1.00)
                      FontFamily="Segoe UI Semibold" FontSize="11" Foreground="#AEB9CF"/>
         </StackPanel>
         <TextBlock x:Name="TitleText" HorizontalAlignment="Right" VerticalAlignment="Center"
-                   FontFamily="Segoe UI Semibold" FontSize="11" Foreground="#5A6B8C"/>
+                   MaxWidth="250" TextTrimming="CharacterEllipsis" TextWrapping="NoWrap"
+                   FontFamily="Segoe UI Semibold" FontSize="11" Foreground="#7C8BA8"/>
       </Grid>
       <TextBlock x:Name="L0" TextWrapping="Wrap" FontFamily="Segoe UI" FontSize="12" Foreground="#E6ECF7" Margin="0,0,0,0"/>
       <TextBlock x:Name="L1" TextWrapping="Wrap" FontFamily="Segoe UI" FontSize="12" Foreground="#E6ECF7" Margin="0,0,0,0"/>
@@ -85,7 +93,8 @@ $win = [Windows.Markup.XamlReader]::Load($reader)
 
 $dot    = $win.FindName('Dot')
 $stext  = $win.FindName('StatusText')
-$win.FindName('TitleText').Text = $Title
+# Uppercase the title for a calm HUD-label look; trimming handles overflow.
+$win.FindName('TitleText').Text = $Title.ToUpper()
 $lineTB = @($win.FindName('L0'), $win.FindName('L1'), $win.FindName('L2'))
 for ($i = 0; $i -lt $LINES; $i++) { $lineTB[$i].Opacity = $FADE[$i] }
 
@@ -122,7 +131,12 @@ $win.Add_SourceInitialized({
   $wa = [System.Windows.SystemParameters]::WorkArea
   $script:restLeft = $wa.Right - $win.Width - 24
   $script:offLeft  = $script:restLeft + $SLIDE
-  $win.Top  = $wa.Top + 24
+  # Stack down the right edge: each instance gets a slot; ~118px per row leaves a
+  # gap for the typical 3-line card. Windows past the work area clamp to the top.
+  $rowH = 118
+  $top = $wa.Top + 24 + ($Slot * $rowH)
+  if ($top -gt ($wa.Bottom - 90)) { $top = $wa.Top + 24 }
+  $win.Top  = $top
   # start off-screen-ish + transparent, then animate in
   $win.Left = $script:offLeft
   $win.Opacity = 0

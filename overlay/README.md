@@ -31,6 +31,15 @@ orchestrator ─▶ say.sh    ─▶ overlay.feed  ─┐
   the newest out character-by-character, and fades + slides in/out with cubic
   easing. Self-closes the instant the armed flag disappears.
 
+### On finish — auto-fade
+
+When status is set to `done`, the HUD holds green for a short delay (~12s), then
+fades + slides out and closes on its own — so a finished run tidies itself away
+without a manual `stop`. The countdown is **cancelled** if the status changes
+back (e.g. the next continuous-improvement cycle sets `working`), so it never
+vanishes mid-run. Tune or disable via `BUREAU_OVERLAY_DONE_MS` (milliseconds;
+`0` disables auto-fade — the window then stays until `overlay.sh stop`).
+
 ## Turning it on
 
 Like the voice, it arms per-run via a keyword in your `/bureau` prompt
@@ -66,6 +75,7 @@ No installs — WPF ships with Windows.
 overlay.armed    presence = armed; the HUD watches this and self-closes when gone
 overlay.feed     the summary lines (kind<TAB>text), trimmed to the last 40
 overlay.status   one token: working | action | done | blocked
+                 (holding 'done' ~12s auto-fades the window; see On finish above)
 overlay.vis      one token: shown | hidden  (drives the slide in/out)
 overlay.pid      the launched powershell.exe pid (best-effort cleanup)
 ```

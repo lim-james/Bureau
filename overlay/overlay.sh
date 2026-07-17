@@ -85,9 +85,13 @@ cmd_start() {
   wVis="$(wslpath -w "$VIS")"
   wHud="$(wslpath -w "$HUD")"
 
+  # Auto-fade delay after status hits 'done' (ms; 0 disables). WSL env vars do
+  # NOT cross into powershell.exe, so we read it here and pass it as a param.
+  local done_ms="${BUREAU_OVERLAY_DONE_MS:-12000}"
+
   # Launch detached; -WindowStyle Hidden hides the console, the WPF window shows.
   "$PS" -NoProfile -ExecutionPolicy Bypass -WindowStyle Hidden \
-    -File "$wHud" -Feed "$wFeed" -Status "$wStatus" -Flag "$wFlag" -Vis "$wVis" \
+    -File "$wHud" -Feed "$wFeed" -Status "$wStatus" -Flag "$wFlag" -Vis "$wVis" -DoneMs "$done_ms" \
     >/dev/null 2>&1 &
   local pid=$!
   echo "$pid" > "$PIDF"

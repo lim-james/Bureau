@@ -19,6 +19,7 @@ param(
   [Parameter(Mandatory=$true)][string]$Status,
   [Parameter(Mandatory=$true)][string]$Flag,
   [Parameter(Mandatory=$true)][string]$Vis,
+  [int]$DoneMs = 12000,
   [string]$Title = "BUREAU"
 )
 
@@ -141,6 +142,13 @@ $script:kindLast   = 'summary'
 $script:closing    = $false  # exit animation in flight
 $script:visState   = 'shown' # shown | hidden — driven by the control file
 $script:animating  = $false  # a show/hide slide is in flight
+$script:doneTick   = -1      # tick at which status first became 'done' (-1 = not done)
+
+# Auto-dismiss: once status has been 'done' for this many ms, the HUD fades out
+# and closes on its own. Any status change back (e.g. the next improvement cycle
+# sets 'working') cancels the countdown, so it never vanishes mid-run. Passed in
+# as the -DoneMs param (0 disables auto-fade — the window stays until stopped).
+$DONE_MS = $DoneMs
 
 # Colours per line kind (the "kind" is the text before the first TAB).
 function Kind-Color($kind) {
@@ -231,6 +239,25 @@ $timer.Add_Tick({
       'action'  { $dot.Fill = [Windows.Media.BrushConverter]::new().ConvertFromString('#FFB020'); $stext.Text = 'ACTION NEEDED'; $script:pulseOn = $true }
       'blocked' { $dot.Fill = [Windows.Media.BrushConverter]::new().ConvertFromString('#FF5C5C'); $stext.Text = 'BLOCKED';       $script:pulseOn = $true }
       default   { $dot.Fill = [Windows.Media.BrushConverter]::new().ConvertFromString('#4C8DFF'); $stext.Text = 'WORKING';       $script:pulseOn = $false }
+    }
+
+    # Auto-dismiss countdown: start it when 'done' first appears; cancel on any
+    # other status (a new cycle keeps the HUD up).
+    if ($st -eq 'done') {
+      if ($script:doneTick -lt 0) { $script:doneTick = $script:tick }
+    } else {
+      $script:doneTick = -1
+    }
+  }
+
+  # ---- auto-fade after status has held 'done' for $DONE_MS -----------------
+  if ($DONE_MS -gt 0 -and $script:doneTick -ge 0 -and -not $script:closing) {
+    $elapsedMs = ($script:tick - $script:doneTick) * 40
+    if ($elapsedMs -ge $DONE_MS) {
+      $script:closing = $true
+      $timer.Stop()
+      Hide-Overlay({ $win.Close() })
+      return
     }
   }
 

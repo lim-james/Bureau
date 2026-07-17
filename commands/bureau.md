@@ -97,7 +97,7 @@ Also check `$ARGUMENTS` for the keyword **`overlay`** or **`hud`** (case-insensi
   {{BUREAU_HOME}}/overlay/status.sh done        # finished (green)
   {{BUREAU_HOME}}/overlay/status.sh blocked     # stuck on something only the human can resolve (red)
   ```
-- **When the run finishes** (contract surfaced for approval), set `status.sh action` (you need their review), then stop the HUD only if the human is done: `{{BUREAU_HOME}}/overlay/overlay.sh stop`. Otherwise leave it up. All scripts self-gate on the armed flag and are safe no-ops when the overlay is off.
+- **When the run finishes** (contract surfaced for approval), set `status.sh action` (you need their review) — the dot goes amber and the HUD stays up waiting for them. If instead the work is genuinely complete, set `status.sh done`: the dot goes green and the HUD **auto-fades and closes itself after ~12s** (no manual stop needed; the countdown cancels if status later changes back). All scripts self-gate on the armed flag and are safe no-ops when the overlay is off.
 - Overlay and voice are independent and combine freely: `jarvis` arms audio, `overlay`/`hud` arms the screen. Emit to both when both are armed.
 
 ---

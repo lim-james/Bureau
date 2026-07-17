@@ -24,12 +24,16 @@ HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 . "$HERE/_common.sh"
 overlay_resolve
 
-mkdir -p "$INST" 2>/dev/null || true
-
 STATE="$(printf '%s' "${1:-working}" | tr '[:upper:]' '[:lower:]' | tr -d '[:space:]')"
 case "$STATE" in working|done|action|blocked) : ;; *) STATE="working" ;; esac
 
-# GATE
+# If this session named an overlay id but never ran `overlay.sh start`, bring the
+# window up now so the narration isn't lost. No-op if already running or unnamed.
+overlay_autostart
+
+# GATE — only touch the instance when it is actually armed (i.e. a window exists).
+# Note the gate is BEFORE any mkdir, so status/say on an un-launched instance is
+# a true no-op and never leaves a stray empty ~/.bureau/overlay/<id>/ dir behind.
 armed=0
 case "${BUREAU_OVERLAY:-}" in
   1|on|true|yes) armed=1 ;;

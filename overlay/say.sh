@@ -28,8 +28,6 @@ overlay_resolve
 LOCK="$FEED_LOCK"
 KEEP=40   # keep the feed bounded; the HUD only shows the last handful
 
-mkdir -p "$INST" 2>/dev/null || true
-
 # --- parse optional -k/--kind KIND --------------------------------------------
 KIND="summary"
 if [ "${1:-}" = "-k" ] || [ "${1:-}" = "--kind" ]; then
@@ -44,7 +42,13 @@ if [ "$#" -gt 0 ]; then TEXT="$*"; else TEXT="$(cat)"; fi
 TEXT="$(printf '%s' "$TEXT" | tr '\n\t' '  ' | sed 's/  */ /g; s/^ //; s/ $//')"
 [ -z "${TEXT// }" ] && exit 0
 
+# If this session named an overlay id but never ran `overlay.sh start`, bring the
+# window up now so this line isn't lost. No-op if already running or unnamed.
+overlay_autostart
+
 # --- GATE: only when armed ----------------------------------------------------
+# Gate BEFORE any mkdir so say.sh on an un-launched instance is a true no-op and
+# never leaves a stray empty ~/.bureau/overlay/<id>/ dir behind.
 armed=0
 case "${BUREAU_OVERLAY:-}" in
   1|on|true|yes) armed=1 ;;
@@ -54,6 +58,7 @@ esac
 [ "$armed" = "1" ] || exit 0
 
 # --- append + trim (serialized) -----------------------------------------------
+mkdir -p "$INST" 2>/dev/null || true   # armed but dir may lag; ensure it exists
 (
   exec 9>"$LOCK"
   flock 9

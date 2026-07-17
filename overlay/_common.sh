@@ -22,6 +22,9 @@
 BUREAU_DIR="${BUREAU_DIR:-$HOME/.bureau}"
 OVER_ROOT="$BUREAU_DIR/overlay"
 SLOTS_LOCK="$OVER_ROOT/slots.lock"
+# Directory these scripts live in, so helpers can invoke sibling scripts
+# (e.g. auto-launching overlay.sh) regardless of the caller's cwd.
+OVERLAY_BIN="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
 # Sanitize an id to a safe directory segment: lowercase, [a-z0-9_-], trimmed,
 # capped. Empty -> "default".
@@ -69,3 +72,18 @@ overlay_present() {
 
 # This instance's own running check.
 overlay_is_running() { overlay_pid_alive "$INST"; }
+
+# Auto-launch safety net: a session may narrate (say/status) with an explicit
+# BUREAU_OVERLAY_ID but forget to run `overlay.sh start` first — the window then
+# never exists and the narration goes nowhere. If an id was explicitly set and no
+# window is running for it, launch one. Only fires when BUREAU_OVERLAY_ID is set
+# (not the implicit "default"), so a bare say/status off a real overlay stays a
+# no-op. Best-effort: silent, never blocks or errors the caller.
+overlay_autostart() {
+  [ -n "${BUREAU_OVERLAY_ID:-}" ] || return 0     # only for explicitly-named instances
+  overlay_is_running && return 0                  # already up
+  [ -x "$OVERLAY_BIN/overlay.sh" ] || return 0
+  # Use the existing title if one was written, else the id as a readable label.
+  local title; title="$(cat "$TITLEF" 2>/dev/null)"; [ -n "$title" ] || title="$OVERLAY_ID"
+  "$OVERLAY_BIN/overlay.sh" start "$title" >/dev/null 2>&1 || true
+}

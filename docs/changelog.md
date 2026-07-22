@@ -4,6 +4,27 @@ The constitution carries its own version, separate from product releases. Every 
 
 ---
 
+## v2.2.0 — 2026-07-22 — The Tooling Workshop
+
+**Origin.** The same founding team, **The Registry** (panel: Marcus Halloran, Strategist · Priya Venkataraman, Researcher · Dieter Krause, Critic), direction contract `.bureau/contracts/direction_v6.md`, human-ratified 2026-07-22. This release ships the second strand — the Tooling Workshop — after strand 1 (the Why-Ledger, v2.1.0).
+
+**Why a MINOR bump.** This adds a new mechanism (durable, gate-verified agent tooling) without shifting the order of authority or any existing governance rule — it applies the *existing* deterministic gate to a new object (a tool). A new organ, not a breaking change.
+
+### Added
+- **`workshop.md`** — new document defining the Tooling Workshop: a curated, project-local home for agent-built tooling at `.bureau/workshop/` (separate from the project deliverable), with a three-state model (`ephemeral` → `durable-candidate` → `trusted`), promotion via a three-part deterministic gate (own test + regression + dedup) run outside agent write-scope, an index with a binding search-first norm, an on-demand dissolvable **librarian** consultancy that curates and administers the gate but cannot confer trust, the doing/grading firewall, and content-hash demotion/staleness handling. *Reason: agents rebuild the same throwaway scripts every session — a stochastic re-derivation of a step already solved; the Workshop makes the *how* durable so a tool built once is discovered, reused, and refined rather than duplicated.*
+
+### Changed
+- **`employees.md`** — the Consultant type now notes the Workshop librarian as an on-demand Consultant (Internal tooling developer sub-role) that curates and administers the gate but cannot confer trust by assent. *Reason: curation needs an owner, but a standing body with promotion authority would be the unaccountable team the dissolution trigger exists to prevent.*
+- **`operating_principles.md`** — A-20 ("isolate grader from gradee") now cross-references the Workshop's doing/grading firewall as its capability-boundary enforcement. *Reason: reward-tampering generalises to grader-editing and survives safety training, so the principle needs a hard namespace firewall, not just a convention.*
+- **`lifecycle.md`** — the deterministic gate now also governs tool promotion (a tool is `trusted` only on a green gate), and the health vector may include a workshop-health component (index freshness / trusted-tool reuse rate). *Reason: trust must be mechanical and un-fakeable, and an unmeasured Workshop cannot be held to the dissolution discipline.*
+- **`commands/bureau-run.md`** — operational teams are now instructed on the search-first norm, declaring a tool's impact label, and that durable tools are promoted only via the gate. *Reason: reuse pays off only if discovery precedes building; the norm is worthless unless teams actually search before they build.*
+- **`commands/bureau.md`** — the founding scaffold now includes `.bureau/workshop/` (trusted/ + candidates/ + index + gate.sh), separate from the project deliverable. *Reason: the tooling surface must exist and be named from day one.*
+
+### Reason
+The Why-Ledger (v2.1.0) made the *why* durable across dissolutions; the *how* was still rebuilt every session as throwaway scripts, re-introducing variance into steps already solved. The Workshop closes that gap by applying the constitution's own deterministic gate to tools — trust is earned by a model-independent check, never conferred by a team.
+
+---
+
 ## v2.1.0 — 2026-07-22 — The Why-Ledger
 
 **Origin.** A founding team, **The Registry** (panel: Marcus Halloran, Strategist · Priya Venkataraman, Researcher · Dieter Krause, Critic), produced direction contract `.bureau/contracts/direction_v6.md` — a constitutional revision adding durable org-memory that outlives the org chart. Human-ratified 2026-07-22 (this release wires in the first strand, the ledger; the Tooling Workshop is parked as M2).

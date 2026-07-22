@@ -9,7 +9,7 @@ Permanent employees. They hold established roles within the Bureau and are expec
 Brought on board to test an idea. Expendable — once the idea is validated or discarded, the intern's tenure ends. Interns are not expected to carry long-term institutional knowledge.
 
 ### Consultant
-A temporary addition brought on to solve or rigorously audit a **specific, bounded task**. A consultant is not permanent and is not an intern — an intern tests an idea, a consultant tackles a defined problem or audit. Once the consultant has achieved what it was commissioned to do, it delivers its findings and leaves; its tenure ends and its last day is recorded. Consultants are commissioned by partners — often in response to external feedback, or as the end-of-phase audit. See [External Feedback](./feedback.md).
+A temporary addition brought on to solve or rigorously audit a **specific, bounded task**. A consultant is not permanent and is not an intern — an intern tests an idea, a consultant tackles a defined problem or audit. Once the consultant has achieved what it was commissioned to do, it delivers its findings and leaves; its tenure ends and its last day is recorded. Consultants are commissioned by partners — often in response to external feedback, or as the end-of-phase audit. See [External Feedback](./feedback.md). The Tooling Workshop's **librarian** is an on-demand Consultant of the *Internal tooling developer* sub-role: commissioned when the candidate queue crosses a threshold, it curates and administers the gate but **cannot confer trust by assent** — only the gate does — and dissolves when its scope closes (see [Workshop](./workshop.md)).
 
 ---
 

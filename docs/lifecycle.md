@@ -19,7 +19,7 @@ At the outset, the founding team defines milestones for the project. The first a
 The MVP marks the end of Phase 1. It is the bureau's first release — versioned and formally delivered.
 
 ### The Deterministic Gate (mandatory)
-No release advances a version, and no cron cycle may *claim* an improvement, unless a **model-independent check passes** — tests, linters, type-checkers, and build for code; a fresh-context `checks.yaml` checklist for non-code deliverables (see [Operating Principles](./operating_principles.md) §1). This is the one sensor that does not share the model's error distribution, and it is **not optional**. Consensus never overrides the gate.
+No release advances a version, and no cron cycle may *claim* an improvement, unless a **model-independent check passes** — tests, linters, type-checkers, and build for code; a fresh-context `checks.yaml` checklist for non-code deliverables (see [Operating Principles](./operating_principles.md) §1). This is the one sensor that does not share the model's error distribution, and it is **not optional**. Consensus never overrides the gate. The same gate now also governs **tool promotion** in the [Workshop](./workshop.md): a tool is `trusted` only on a green gate (its own test passes, breaks no trusted tool, and is not a duplicate) — never by any team's assent.
 
 ### End-of-Phase Audit (mandatory)
 Before any phase is considered closed, the bureau **stands up multiple consultancy teams to rigorously check every aspect of the project** — correctness, security, performance, coverage, documentation, and alignment with the direction contract. These teams audit with a critic's distance and leave once their findings are dispositioned. This is a requirement, not a recommendation — a phase graded only by the team that built it is a monoculture grading its own homework. See [External Feedback](./feedback.md).
@@ -34,7 +34,7 @@ The bureau does not stop at the MVP. Phase 2 is ongoing and self-directed.
 
 The bureau runs a periodic cron that triggers self-evaluation. A feedback loop must *measure* before it *acts*, or it is open-loop and cannot converge.
 
-**The setpoint — a health vector.** The cron's first act each cycle is to **measure** a defined health vector (e.g. test pass-rate, coverage, count of open accepted-findings past target, build status, benchmark deltas) and record it to `.bureau/records/health/<timestamp>.md`. Every subsequent action must name the health-component it improves.
+**The setpoint — a health vector.** The cron's first act each cycle is to **measure** a defined health vector (e.g. test pass-rate, coverage, count of open accepted-findings past target, build status, benchmark deltas, and — where the [Workshop](./workshop.md) is active — a workshop-health component such as index freshness or trusted-tool reuse rate) and record it to `.bureau/records/health/<timestamp>.md`. Every subsequent action must name the health-component it improves.
 
 **Roles contribute by reducing measured error:**
 

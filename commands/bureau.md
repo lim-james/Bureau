@@ -131,6 +131,7 @@ After all three agents complete, synthesise their outputs into:
    - `.bureau/contracts/` — direction contract
    - `.bureau/releases/` — empty, ready for version tracking
    - `.bureau/decisions/` — empty, ready for the Why-Ledger (durable decision records; schema in `.bureau/constitution/decisions.md`, copied from `docs/decisions.md`). The direction contract should note the ledger obligation: operational teams write a record at every settled call.
+   - `.bureau/workshop/` — empty, ready for the Tooling Workshop (durable agent-built tooling, separate from the project deliverable): `trusted/` + `candidates/` + the index + `gate.sh`. See `.bureau/constitution/workshop.md` (copied from `docs/workshop.md`).
 
 4. A `.claude/settings.json` file in the project root with the following exact content:
 ```json

@@ -4,6 +4,26 @@ The constitution carries its own version, separate from product releases. Every 
 
 ---
 
+## v2.1.0 — 2026-07-22 — The Why-Ledger
+
+**Origin.** A founding team, **The Registry** (panel: Marcus Halloran, Strategist · Priya Venkataraman, Researcher · Dieter Krause, Critic), produced direction contract `.bureau/contracts/direction_v6.md` — a constitutional revision adding durable org-memory that outlives the org chart. Human-ratified 2026-07-22 (this release wires in the first strand, the ledger; the Tooling Workshop is parked as M2).
+
+**Why a MINOR bump.** This adds a new mechanism (durable decision records) without shifting the order of authority or any existing governance rule — a new organ, not a breaking change.
+
+### Added
+- **`decisions.md`** — new document defining the Why-Ledger: durable, immutable decision records at `.bureau/decisions/`, one per settled call, on a fixed schema (`what`, `alternatives_rejected`, `external_signal`, `team`, `date`, `supersedes`). The `external_signal` — a pointer to a model-independent artefact, or the literal `JUDGMENT — UNVERIFIED` — is the only field treated as evidence. *Reason: when a team dissolves its reasoning dies with it and the next team re-derives the *why* by crawling the corpus (lossy, slow); the ledger makes handover cheap and makes one audit possible — does what the Bureau did match why it said it would.*
+
+### Changed
+- **`operating_principles.md`** — A-11 ("state-based handoff, not summary-based") now cross-references the Why-Ledger as its implementation. *Reason: the principle was adopted but never built; the ledger is where a stateless agent's structured resume-state actually lives.*
+- **`lifecycle.md`** — the cron watchdog now also auto-surfaces any settled call (a run-log footprint) lacking a ledger entry and any decision record with a stale supersedes-chain, mirroring how it already surfaces findings past target. *Reason: a decision log dies from silent abandonment, not a bad schema; an owned lifecycle outside agent write-scope is the antidote.*
+- **`commands/bureau-run.md`** — operational teams are now instructed to write a Why-Ledger record at each settled call, with the required `external_signal`. *Reason: templates don't save a log; teams must actually write records for the ledger to exist.*
+- **`commands/bureau.md`** — the founding scaffold now includes `.bureau/decisions/`, and founding is told to note the ledger obligation in the direction contract. *Reason: the memory surface must exist and be named from day one.*
+
+### Reason
+The constitution governed the org chart and the substrate but had no durable memory across dissolutions — the largest remaining gap in handover fidelity. The ledger closes it cheaply, annotating the *existing* run-log footprint rather than inventing a parallel event stream.
+
+---
+
 ## v2.0.0 — 2026-07-10 — The Self-Correcting Rework
 
 **Origin.** A meta-effort in which the Bureau used its own founding process to scrutinise and improve its constitution. Three founding panels (The Charter Assembly, The Extended Bench, The Keystone Panel) and an 8-researcher LLM-Behaviour Study Group produced four direction contracts (`.bureau/contracts/direction_v1..v4.md`) and three findings ledgers (`.bureau/feedback/2026-07-10-*`). Ratified by the human.

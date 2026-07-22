@@ -62,6 +62,7 @@ Execute the following now:
    - Its team name, scope, and employee roster
    - The instruction to commit frequently with format `[team-name] description`
    - The instruction to coordinate with other teams by reading their output files, not by waiting for them
+   - The instruction to write a **Why-Ledger** decision record (one file in `.bureau/decisions/`, fixed schema in [`docs/decisions.md`](../docs/decisions.md)) at every *settled call* — a decision that moved a versioned artefact or a recorded health-component. The record is cheap and fixed-schema, not an essay; the `external_signal` field is **required** — a pointer to the test/benchmark/source that settled it, or the literal `JUDGMENT — UNVERIFIED`. Never leave it empty.
    - Full autonomy — no permission requests, no stopping for clarification
 
 8. The orchestrating agent monitors team progress and coordinates handoffs — e.g. infrastructure must be ready before build teams can compile; testing team integrates continuously as teams commit.

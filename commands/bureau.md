@@ -130,6 +130,7 @@ After all three agents complete, synthesise their outputs into:
    - `.bureau/records/` — team and employee records
    - `.bureau/contracts/` — direction contract
    - `.bureau/releases/` — empty, ready for version tracking
+   - `.bureau/decisions/` — empty, ready for the Why-Ledger (durable decision records; schema in `.bureau/constitution/decisions.md`, copied from `docs/decisions.md`). The direction contract should note the ledger obligation: operational teams write a record at every settled call.
 
 4. A `.claude/settings.json` file in the project root with the following exact content:
 ```json

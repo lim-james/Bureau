@@ -88,6 +88,33 @@ produces becomes one glanceable line (plus a status). There is no API and no
 live prompt feed: the character-by-character reveal is a local effect, so the
 only input is the summary line the orchestrator chooses to push.
 
+## Activity mode — the mechanical ticker
+
+The summary feed is a *narrative* view. **Activity mode** adds the complementary
+*mechanical* view: a single ticker row pinned below the summaries that shows the
+actual work as it happens — `✎ editing hud.ps1`, `❯ running npm test`,
+`⌕ searching …`, `◆ delegating …` — with a live braille spinner while a burst is
+in flight, settling and hiding itself when the work goes quiet. A failed bash
+command flashes the row red.
+
+It is driven **automatically** by a Claude Code **tool-call hook**
+(`activity-hook.sh`, registered as `PreToolUse`/`PostToolUse` in the project's
+`.claude/settings.json`), so nothing has to be narrated by hand — every edit,
+read, command, search, and sub-agent is captured. The hook is a fast **no-op**
+unless activity mode is armed for the current project dir, so leaving it
+registered costs nothing.
+
+```
+overlay/overlay.sh activity on     # arm the ticker (binds to $CLAUDE_PROJECT_DIR / cwd)
+overlay/overlay.sh activity off    # disarm it
+```
+
+Arm it per-run via the `activity` (or `verbose`) keyword in a `/bureau` prompt,
+alongside `overlay`/`hud`. The hook has no `BUREAU_OVERLAY_ID` of its own (it
+fires from the harness, not the orchestrator), so it discovers the target window
+by matching its recorded project dir (`act.cwd`) — the most recently armed
+instance for that dir wins.
+
 ## Requirements & degradation
 
 **WSL-on-Windows only** — it renders by invoking Windows `powershell.exe` (WPF)
@@ -109,4 +136,7 @@ overlay/<id>/vis         one token: shown | hidden  (drives the slide in/out)
 overlay/<id>/pid         the launched powershell.exe pid (best-effort cleanup)
 overlay/<id>/title       the descriptive window title
 overlay/<id>/slot        this instance's stack position (0 = top)
+overlay/<id>/act.on      presence = activity ticker armed for this instance
+overlay/<id>/act.cwd     the project dir the tool-call hook routes activity from
+overlay/<id>/act.line    the current ticker line (kind<TAB>text), updated in place
 ```

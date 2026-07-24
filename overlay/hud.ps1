@@ -109,6 +109,13 @@ $FADE = @(0.40, 0.68, 1.00)
       <TextBlock x:Name="L0" TextWrapping="Wrap" FontFamily="Segoe UI" FontSize="12" Foreground="#E6ECF7" Margin="0,0,0,0"/>
       <TextBlock x:Name="L1" TextWrapping="Wrap" FontFamily="Segoe UI" FontSize="12" Foreground="#E6ECF7" Margin="0,0,0,0"/>
       <TextBlock x:Name="L2" TextWrapping="Wrap" FontFamily="Segoe UI Semibold" FontSize="13" Foreground="#FFFFFF" Margin="0,0,0,0"/>
+      <!-- Activity ticker: the mechanical "what's happening now" row. A hairline
+           separates it from the narrative summaries above. Monospace so the
+           spinner + verb sit steady; updated in place, never scrolls. Collapsed
+           unless activity mode is armed and a line has arrived. -->
+      <Border x:Name="ActSep" Height="1" Margin="0,6,0,5" Background="#22FFFFFF" Visibility="Collapsed"/>
+      <TextBlock x:Name="Act" TextWrapping="NoWrap" FontFamily="Consolas" FontSize="11"
+                 Foreground="#9AA7BE" Margin="0,0,0,0" Visibility="Collapsed"/>
     </StackPanel>
   </Border>
 </Window>
@@ -149,6 +156,8 @@ function Measure-Title {
     $titleShift.X = 0.0
   }
 }
+$actTB  = $win.FindName('Act')
+$actSep = $win.FindName('ActSep')
 $lineTB = @($win.FindName('L0'), $win.FindName('L1'), $win.FindName('L2'))
 # Start every row collapsed (zero height) so a freshly-opened card is not three
 # empty rows tall; each row becomes Visible as a line fills it.
@@ -178,6 +187,7 @@ $script:instDir  = Split-Path $Feed
 $script:root     = Split-Path $script:instDir
 $script:heightFile = Join-Path $script:instDir 'height'
 $script:beatFile   = Join-Path $script:instDir 'beat'
+$script:actFile    = Join-Path $script:instDir 'act.line'
 
 # Liveness across the WSL/Windows boundary: the pid file holds a WSL pid, which
 # this Windows process CANNOT check with Get-Process. So each HUD writes a
@@ -329,6 +339,20 @@ $script:doneTick   = -1      # tick at which status first became 'done' (-1 = no
 $script:lastActivity = ''    # last-seen "feed mtime|status mtime" signature
 $script:idleTick   = 0       # tick when activity last changed
 
+# --- activity ticker state ----------------------------------------------------
+# The mechanical row reads act.line (written by activity-hook.sh on every tool
+# call). We spin a glyph while lines keep arriving and fade the row out when the
+# stream goes quiet, so a burst of edits reads as live motion and an idle gap
+# visibly settles. All in-place: the row never scrolls.
+$script:actText    = ''      # current ticker text (without spinner)
+$script:actKind    = 'activity'
+$script:actMtime   = ''      # last-seen act.line mtime (change = new activity)
+$script:actLastTick = -100000 # tick of the last activity change (for freshness)
+$script:spinIdx    = 0
+$SPINNER = @([char]0x2839,[char]0x2838,[char]0x283C,[char]0x2834,[char]0x2826,[char]0x2827,[char]0x280F,[char]0x2819) # braille dots
+$ACT_FRESH_MS = 1500          # spin while newer than this
+$ACT_FADE_MS  = 6000          # fully faded (row hidden) after this much quiet
+
 # Auto-dismiss: once status has been 'done' for this many ms, the HUD fades out
 # and closes on its own. Any status change back (e.g. the next improvement cycle
 # sets 'working') cancels the countdown, so it never vanishes mid-run. Passed in
@@ -347,6 +371,8 @@ function Kind-Color($kind) {
     'decision' { return '#8FD6FF' }   # cool accent — a decision/conclusion
     'action'   { return '#FFC24B' }   # amber — needs you
     'status'   { return '#9AA7BE' }   # dim — plain status
+    'activity' { return '#8CA0C8' }   # muted blue-grey — mechanical ticker
+    'warn'     { return '#FF7A7A' }   # soft red — a failed command
     default    { return '#FFFFFF' }   # summary — bright
   }
 }
@@ -455,6 +481,27 @@ $timer.Add_Tick({
       default   { $dot.Fill = [Windows.Media.BrushConverter]::new().ConvertFromString('#4C8DFF'); $stext.Text = 'WORKING';       $script:pulseOn = $false }
     }
 
+    # ---- activity ticker: read act.line, note freshness by mtime ----------
+    # act.line exists only while activity mode is armed for this instance; when
+    # it's absent the row stays hidden. We track the file mtime so a re-written
+    # SAME text still counts as fresh activity (spinner keeps moving).
+    $am = ''
+    try { if (Test-Path $script:actFile) { $am = ([System.IO.File]::GetLastWriteTimeUtc($script:actFile)).Ticks.ToString() } } catch { $am = '' }
+    if ($am -ne '') {
+      $araw = Read-Text $script:actFile
+      if ($null -ne $araw) {
+        $aline = @($araw -split "`r?`n" | Where-Object { $_ -ne '' })[-1]
+        if ($aline) {
+          $ap = $aline -split "`t", 2
+          if ($ap.Count -eq 2) { $script:actKind = $ap[0]; $script:actText = $ap[1] }
+          else { $script:actKind = 'activity'; $script:actText = $ap[0] }
+        }
+      }
+      if ($am -ne $script:actMtime) { $script:actMtime = $am; $script:actLastTick = $script:tick }
+    } else {
+      $script:actText = ''   # mode disarmed / file gone — row will collapse
+    }
+
     # Auto-dismiss countdown: start it when 'done' first appears; cancel on any
     # other status (a new cycle keeps the HUD up).
     if ($st -eq 'done') {
@@ -507,6 +554,33 @@ $timer.Add_Tick({
   if ($script:typed -lt $full.Length) { $shown += '▌' }     # blinking-ish caret
   $newestTB.Text = $shown
   $newestTB.Foreground = [Windows.Media.BrushConverter]::new().ConvertFromString((Kind-Color $script:kindLast))
+
+  # ---- activity ticker: spinner while fresh, fade + collapse when quiet -----
+  if ([string]::IsNullOrEmpty($script:actText)) {
+    if ($actTB.Visibility -ne 'Collapsed') { $actTB.Visibility = 'Collapsed'; $actSep.Visibility = 'Collapsed' }
+  } else {
+    $sinceMs = ($script:tick - $script:actLastTick) * 40
+    if ($sinceMs -ge $ACT_FADE_MS) {
+      # gone quiet — retire the row so the card shrinks back to the summaries
+      if ($actTB.Visibility -ne 'Collapsed') { $actTB.Visibility = 'Collapsed'; $actSep.Visibility = 'Collapsed' }
+    } else {
+      if ($actTB.Visibility -ne 'Visible') { $actTB.Visibility = 'Visible'; $actSep.Visibility = 'Visible' }
+      $fresh = ($sinceMs -lt $ACT_FRESH_MS)
+      if ($fresh) {
+        # advance the spinner ~every 3rd tick (~120ms) for a smooth crawl
+        if ($script:tick % 3 -eq 0) { $script:spinIdx = ($script:spinIdx + 1) % $SPINNER.Count }
+        $glyph = $SPINNER[$script:spinIdx]
+        $actTB.Text = "$glyph $($script:actText)"
+        $actTB.Opacity = 1.0
+      } else {
+        # still shown but settling: drop the spinner, ease opacity down to 0.45
+        $actTB.Text = "  $($script:actText)"
+        $frac = [double]($sinceMs - $ACT_FRESH_MS) / [double]($ACT_FADE_MS - $ACT_FRESH_MS)
+        $actTB.Opacity = 1.0 - (0.55 * [Math]::Min(1.0, [Math]::Max(0.0, $frac)))
+      }
+      $actTB.Foreground = [Windows.Media.BrushConverter]::new().ConvertFromString((Kind-Color $script:actKind))
+    }
+  }
 
   # ---- status-dot pulse ----------------------------------------------------
   if ($script:pulseOn) {

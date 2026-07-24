@@ -21,6 +21,12 @@
 #   overlay/<id>/beat            heartbeat file the HUD touches each tick; siblings
 #                                use its freshness to detect a self-closed window
 #                                (the pid is a WSL pid the Windows HUD can't check)
+#   overlay/<id>/act.on          presence = ACTIVITY mode armed (show the mechanical
+#                                ticker: edits, tests, commands as they happen)
+#   overlay/<id>/act.cwd         the project dir this instance's activity belongs to,
+#                                so the tool-call hook routes lines to the right window
+#   overlay/<id>/act.line        the current ticker line the hook writes and the HUD
+#                                renders in place ("kind<TAB>text"), newest wins
 
 BUREAU_DIR="${BUREAU_DIR:-$HOME/.bureau}"
 OVER_ROOT="$BUREAU_DIR/overlay"
@@ -50,6 +56,28 @@ overlay_resolve() {
   TITLEF="$INST/title"
   SLOTF="$INST/slot"
   FEED_LOCK="$INST/feed.lock"
+  ACT_ON="$INST/act.on"
+  ACT_CWD="$INST/act.cwd"
+  ACT_LINE="$INST/act.line"
+}
+
+# Resolve the instance dir that owns activity for a given project dir. The
+# tool-call hook has no BUREAU_OVERLAY_ID (it fires from the harness, not the
+# orchestrator), so it discovers the target by scanning armed instances for the
+# one whose act.cwd matches $1. If several match (rare), the most recently armed
+# wins. Prints the instance dir path, or nothing if none is armed for that cwd.
+overlay_activity_target() {
+  local want="$1" d best="" best_mtime=0 m
+  [ -n "$want" ] || return 0
+  for d in "$OVER_ROOT"/*/; do
+    [ -d "$d" ] || continue
+    [ -f "$d/armed" ] || continue
+    [ -f "$d/act.on" ] || continue
+    [ "$(cat "$d/act.cwd" 2>/dev/null)" = "$want" ] || continue
+    m="$(stat -c %Y "$d/act.on" 2>/dev/null || echo 0)"
+    if [ "$m" -ge "$best_mtime" ]; then best_mtime="$m"; best="$d"; fi
+  done
+  [ -n "$best" ] && printf '%s' "${best%/}"
 }
 
 # Is a given instance dir backed by a live launcher process?

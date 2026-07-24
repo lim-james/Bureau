@@ -24,6 +24,8 @@
 #   overlay.sh hide|show     # slide THIS instance out / back in
 #   overlay.sh list          # list all instances (id, slot, pid, title)
 #   overlay.sh stop-all      # stop every instance
+#   overlay.sh activity on   # arm the mechanical ticker (edits/tests/commands)
+#   overlay.sh activity off  # disarm it
 
 set -uo pipefail
 
@@ -219,6 +221,27 @@ cmd_list() {
   return 0
 }
 
+cmd_activity() {
+  local sub="${1:-on}"
+  case "$sub" in
+    on)
+      # Arm the mechanical ticker for THIS instance, bound to the current project
+      # dir so the tool-call hook knows which window to route lines to. The window
+      # need not be up yet; autostart/normal start will render act.line when it is.
+      mkdir -p "$INST" 2>/dev/null || true
+      printf '%s\n' "${CLAUDE_PROJECT_DIR:-$PWD}" > "$ACT_CWD"
+      : > "$ACT_LINE"
+      touch "$ACT_ON"
+      echo "bureau overlay[$OVERLAY_ID]: activity mode ON (cwd $(cat "$ACT_CWD"))"
+      ;;
+    off)
+      rm -f "$ACT_ON" "$ACT_LINE" "$ACT_CWD" 2>/dev/null || true
+      echo "bureau overlay[$OVERLAY_ID]: activity mode OFF"
+      ;;
+    *) echo "usage: overlay.sh activity {on|off}" >&2; return 2 ;;
+  esac
+}
+
 cmd_stop_all() {
   local d id
   for d in "$OVER_ROOT"/*/; do
@@ -240,5 +263,6 @@ case "${1:-}" in
   show)     cmd_show ;;
   list)     cmd_list ;;
   stop-all) cmd_stop_all ;;
-  *) echo "usage: overlay.sh {start [title]|stop|status|hide|show|list|stop-all}" >&2; exit 2 ;;
+  activity) shift; cmd_activity "$@" ;;
+  *) echo "usage: overlay.sh {start [title]|stop|status|hide|show|list|stop-all|activity {on|off}}" >&2; exit 2 ;;
 esac

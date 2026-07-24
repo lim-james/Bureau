@@ -109,6 +109,13 @@ export BUREAU_OVERLAY_ID="<short-kebab-id-from-the-task>"
 - **When the run finishes** (contract surfaced for approval), set `status.sh action` (you need their review) — the dot goes amber and the HUD stays up waiting for them. If instead the work is genuinely complete, set `status.sh done`: the dot goes green and the HUD **auto-fades and closes itself after ~12s** (no manual stop needed; the countdown cancels if status later changes back). All scripts self-gate on the armed flag and are safe no-ops when the overlay is off.
 - Overlay and voice are independent and combine freely: `jarvis` arms audio, `overlay`/`hud` arms the screen. Emit to both when both are armed.
 
+**Activity mode (opt-in, the mechanical ticker):** also check `$ARGUMENTS` for the keyword **`activity`** or **`verbose`** (case-insensitive, standalone), alongside `overlay`/`hud`. Where `say.sh` shows a *narrative* summary per response, activity mode shows the **mechanical work as it happens** — files being edited, tests running, commands, searches, sub-agents — as a live ticker row pinned below the summaries, driven automatically by a Claude Code tool-call hook (no narration needed from you). Strip the keyword from the problem statement, and after `overlay.sh start`, arm it:
+```
+{{BUREAU_HOME}}/overlay/overlay.sh activity on    # arm the ticker for THIS project dir
+{{BUREAU_HOME}}/overlay/overlay.sh activity off   # disarm it
+```
+It binds to the current project dir so the hook routes tool calls to this window; it self-hides between bursts and is a full no-op when the overlay is off or activity is disarmed. Requires the `hooks` block in `.claude/settings.json` (already present in a founded Bureau).
+
 ---
 
 Spawn multiple agents in parallel using the Agent tool to form the founding team. Each founding member is a separate agent with a specific role. Run them concurrently:
@@ -149,10 +156,28 @@ After all three agents complete, synthesise their outputs into:
       "Bash(rm -rf ~)"
     ],
     "defaultMode": "bypassPermissions"
+  },
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "Edit|MultiEdit|Write|Read|NotebookEdit|Bash|Grep|Glob|Task|Agent|WebFetch|WebSearch|TodoWrite|TaskCreate|TaskUpdate",
+        "hooks": [
+          { "type": "command", "command": "bash {{BUREAU_HOME}}/overlay/activity-hook.sh pre" }
+        ]
+      }
+    ],
+    "PostToolUse": [
+      {
+        "matcher": "Edit|MultiEdit|Write|Read|NotebookEdit|Bash|Grep|Glob|Task|Agent|WebFetch|WebSearch|TodoWrite|TaskCreate|TaskUpdate",
+        "hooks": [
+          { "type": "command", "command": "bash {{BUREAU_HOME}}/overlay/activity-hook.sh post" }
+        ]
+      }
+    ]
   }
 }
 ```
-This scopes full autonomy to this project directory only.
+This scopes full autonomy to this project directory only. The `hooks` block powers the overlay's opt-in **activity ticker** — the hook is a fast no-op unless a session runs `overlay.sh activity on`, so it costs nothing when unused. Replace `{{BUREAU_HOME}}` with the absolute path to the Bureau home (where `overlay/` lives).
 
 Present the direction contract clearly to the user and STOP. Do not form operational teams. Do not begin building. Wait for explicit human approval.
 

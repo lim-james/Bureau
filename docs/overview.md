@@ -45,6 +45,7 @@ Bureau
 
 - [Foundation](./foundation.md) — **the top of the constitution**: order of authority, the Floor, the mission artefact, supremacy clause, and self-amendment
 - [Operating Principles](./operating_principles.md) — how agents are prompted, verified, and judged, grounded in LLM-behaviour research
+- [Automatic Routing](./routing.md) — why every prompt in a Bureau project routes through the pipeline (no `/bureau` prefix), the complexity gate, and the quorum floor
 - [Employee Roles](./employees.md) — roles, responsibilities, and specialisations
 - [Team Structure](./teams.md) — how teams are formed, scoped, size limits, naming, and records
 - [Communication Protocol](./communication.md) — cross-employee and cross-team communication norms

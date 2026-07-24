@@ -4,6 +4,31 @@ The constitution carries its own version, separate from product releases. Every 
 
 ---
 
+## v2.3.0 — 2026-07-24 — Automatic Routing
+
+**Origin.** A user-reported failure: users were unsure whether they had to keep prefixing prompts with `/bureau`, and prompts sent without it were answered by a single solo agent — bypassing the multi-agent pipeline and defeating the Bureau's purpose. Fix scoped and human-approved 2026-07-24 (see the approved plan; no direction contract — this is a framework fix, not a project deliverable). This is the Bureau's **first harness-fired enforcement point**, and it directly addresses the "the Floor is prose, not mechanism" finding of `.bureau/contracts/direction_v7.md`.
+
+**Why a MINOR bump.** Adds a new mechanism (a routing hook + the routing law) without shifting the order of authority or any existing governance rule. A new organ, not a breaking change.
+
+### Added
+- **`routing.md`** — new document: a project containing `.bureau/` is a Bureau, so **every prompt routes through the pipeline automatically** (no `/bureau` prefix). Defines the **complexity gate** (trivial → answer directly; substantive → convene) and the **quorum floor** (≥2 teams × ≥3 agents, ≥1 independent adversarial verifier, grounding over consensus) for substantive work, plus the per-prompt human override. *Reason: requiring a prefix made the pipeline opt-in per prompt; a forgotten prefix silently degraded the Bureau to the single-shot mode it exists to beat. Routing must be a property of project state (which can't be forgotten), not prompt text.*
+- **`hooks/bureau-route-hook.sh`** — a `UserPromptSubmit` command hook that detects `.bureau/` in the project dir and injects the routing mandate into the turn's context (plain stdout; fast silent no-op off-Bureau). *Reason: the harness fires it on every prompt, so it is machinery the human cannot forget to invoke — unlike a prefix.*
+
+### Changed
+- **`overview.md`** — routing.md added to the Documents list. *Reason: a new law must be discoverable from the index.*
+- **`commands/bureau.md`** — the `.claude/settings.json` the founding scaffold writes now registers the `UserPromptSubmit` routing hook alongside the existing overlay hooks. *Reason: new Bureaus must be routed from day one.*
+- **`commands/bureau-sync.md`** — the adherence audit now checks that the routing hook is registered and remediates it if missing. *Reason: this is what heals existing Bureaus — the routing law is worthless in a project whose settings predate it.*
+- **`commands/bureau-run.md`** — notes that operational sessions run under automatic routing. *Reason: reinforce the orchestrator stance the hook injects.*
+- **`install.sh`** — `chmod +x` now covers `hooks/*.sh`. *Reason: a fresh clone must land the hook executable.*
+
+### Attempted deletion (per Foundation §5)
+Reviewed whether `/bureau` as a per-prompt entry point could now be **removed** entirely in favour of pure auto-routing. **Kept**, narrowed in role: `/bureau` is retained solely as the *founding* command (it creates `.bureau/` and the direction contract — the very state auto-routing keys on). It is no longer a per-prompt prefix. No rule was found safe to delete outright this cycle; the deletion pressure was discharged by removing the *prefix obligation* rather than a document.
+
+### Reason
+The Bureau's value over a single-shot call is decomposition + independent adversarial verification + grounding. A pipeline that a human must remember to invoke per prompt is a pipeline that silently doesn't run. Making Bureau-ness a property of the project — enforced by a harness hook, gated by complexity so trivia stays cheap — is what makes the pipeline the default instead of the exception.
+
+---
+
 ## v2.2.0 — 2026-07-22 — The Tooling Workshop
 
 **Origin.** The same founding team, **The Registry** (panel: Marcus Halloran, Strategist · Priya Venkataraman, Researcher · Dieter Krause, Critic), direction contract `.bureau/contracts/direction_v6.md`, human-ratified 2026-07-22. This release ships the second strand — the Tooling Workshop — after strand 1 (the Why-Ledger, v2.1.0).

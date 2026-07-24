@@ -111,8 +111,8 @@ done
 
 # --- 2. make module scripts executable ----------------------------------------
 # A fresh clone can land these as non-executable depending on git config; the
-# docs invoke them directly, so guarantee the bit is set.
-chmod +x "$BUREAU_HOME"/voice/*.sh "$BUREAU_HOME"/overlay/*.sh 2>/dev/null || true
+# docs and hooks invoke them directly, so guarantee the bit is set.
+chmod +x "$BUREAU_HOME"/voice/*.sh "$BUREAU_HOME"/overlay/*.sh "$BUREAU_HOME"/hooks/*.sh 2>/dev/null || true
 
 # --- 3. runtime dir + voice.env seed ------------------------------------------
 mkdir -p "$BUREAU_DIR"

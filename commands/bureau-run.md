@@ -11,6 +11,8 @@ Stage 2 of the Bureau bootstrap. Run this after the direction contract has been 
 
 The Bureau runs fully self-directed from this point. It does not stop to ask for input during the build. When the MVP is delivered, it notifies you and immediately continues into continuous improvement — it does not wait for your response. If you have feedback on the MVP, send it at any time and the Bureau will incorporate it into the next release cycle. Your feedback is never blocking.
 
+Once `.bureau/` exists, this project is **automatically routed** ([routing.md]({{BUREAU_HOME}}/docs/routing.md)): a `UserPromptSubmit` hook injects the Bureau orchestrator mandate on every prompt, so subsequent prompts run through the pipeline without needing `/bureau`. You are the orchestrator, not a solo agent — convene the quorum for substantive work, answer trivia directly.
+
 ---
 
 ### Voice narration (opt-in, ambient)

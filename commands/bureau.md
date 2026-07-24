@@ -158,6 +158,13 @@ After all three agents complete, synthesise their outputs into:
     "defaultMode": "bypassPermissions"
   },
   "hooks": {
+    "UserPromptSubmit": [
+      {
+        "hooks": [
+          { "type": "command", "command": "bash {{BUREAU_HOME}}/hooks/bureau-route-hook.sh" }
+        ]
+      }
+    ],
     "PreToolUse": [
       {
         "matcher": "Edit|MultiEdit|Write|Read|NotebookEdit|Bash|Grep|Glob|Task|Agent|WebFetch|WebSearch|TodoWrite|TaskCreate|TaskUpdate",
@@ -177,7 +184,7 @@ After all three agents complete, synthesise their outputs into:
   }
 }
 ```
-This scopes full autonomy to this project directory only. The `hooks` block powers the overlay's opt-in **activity ticker** — the hook is a fast no-op unless a session runs `overlay.sh activity on`, so it costs nothing when unused. Replace `{{BUREAU_HOME}}` with the absolute path to the Bureau home (where `overlay/` lives).
+This scopes full autonomy to this project directory only. The `hooks` block wires in two things. The **`UserPromptSubmit` routing hook** is the enforcement point for [Automatic Routing]({{BUREAU_HOME}}/docs/routing.md): the harness runs it on every prompt, and because this project has a `.bureau/`, it injects the Bureau routing mandate so every prompt runs through the pipeline — the human never needs to type `/bureau` again. It is a fast no-op in any non-Bureau project. The **Pre/PostToolUse** hooks power the overlay's opt-in activity ticker — a fast no-op unless a session runs `overlay.sh activity on`. Replace `{{BUREAU_HOME}}` with the absolute path to the Bureau home (where `hooks/` and `overlay/` live).
 
 Present the direction contract clearly to the user and STOP. Do not form operational teams. Do not begin building. Wait for explicit human approval.
 

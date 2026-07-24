@@ -9,3 +9,7 @@ Thumbs.db
 # A bureau's runtime state is committed alongside its project, NOT in this
 # framework repo. This clone is the constitution only.
 .bureau/
+
+# This clone's local Claude Code settings hold machine-specific absolute paths;
+# the deployable settings live in the commands/*.md templates ({{BUREAU_HOME}}).
+.claude/
